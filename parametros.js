@@ -1,3 +1,4 @@
+// © 2026 Michel Ebertz. Todos os direitos reservados. Proibido copiar, reproduzir, modificar ou distribuir sem autorização por escrito (Leis 9.610/1998 e 9.609/1998).
 // Parâmetros do planejamento: tabelas fiscais e premissas.
 // Tudo o que muda com a lei ou com o mercado fica aqui. Ao atualizar,
 // troque "verificadoEm" e aumente a VERSAO em sw.js.
@@ -5,10 +6,20 @@
 const PARAMETROS = {
   verificadoEm: '07/11/2026',
 
+  // Autor da metodologia (crédito fixo) e atendimento padrão (quando o assessor não configura o dele).
   planejador: {
     nome: 'Michel Ebertz',
     titulo: 'Assessor de Investimentos e Planejador Financeiro',
     whatsapp: '5549999158181', // 55 + DDD + número, só dígitos
+  },
+
+  direitos: '© 2026 Michel Ebertz. Todos os direitos reservados. A metodologia, os textos e o software deste app são protegidos pelas Leis 9.610/1998 (direitos autorais) e 9.609/1998 (programas de computador). É proibido copiar, reproduzir, modificar ou distribuir, no todo ou em parte, sem autorização por escrito do autor.',
+
+  // Licença do Modo Planejador: códigos assinados por Michel (licencas/gerar-licenca.js).
+  // Esta é só a chave PÚBLICA, que confere a assinatura; ela não gera códigos.
+  licenca: {
+    chavePublica: { kty: 'EC', crv: 'P-256', x: '_xTIFEFqBEBDmPbyRA0fQpE1ZE0KhckcCB29ngSNJb8', y: 'u5OJ2GZtV3qYx0rjGcPxzXc0x8PuZRN9CWBBG7x99OI' },
+    avisoDias: 15, // avisa o assessor quando faltar isso para vencer
   },
 
   salarioMinimo: 1621.00,

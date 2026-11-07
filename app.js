@@ -1,8 +1,9 @@
 'use strict';
+// © 2026 Michel Ebertz. Todos os direitos reservados. Proibido copiar, reproduzir, modificar ou distribuir sem autorização por escrito (Leis 9.610/1998 e 9.609/1998).
 
 // ===================== Utilidades =====================
 
-const VERSAO_APP = 'v3';
+const VERSAO_APP = 'v5';
 const P = PARAMETROS;
 
 const fmtMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -99,14 +100,68 @@ let sim = {};
 const perfil = () => estado.perfis.find((p) => p.id === estado.ativoId) || estado.perfis[0];
 const planejador = () => !!estado.config.modoPlanejador;
 
-// Assessor deste celular: o que foi configurado em Ajustes; o que ficar em branco usa o padrão de parametros.js.
-function assessor() {
+// ---------- Licença do Modo Planejador ----------
+// O código é assinado por Michel (licencas/gerar-licenca.js). O app só confere a assinatura
+// com a chave pública: sem a chave privada, ninguém cria nem altera um código.
+
+const bytesDeB64url = (s) => {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+};
+
+async function verificarCodigo(codigo) {
+  const partes = String(codigo || '').replace(/\s+/g, '').split('.');
+  if (partes.length !== 3 || partes[0] !== 'PF1' || !crypto.subtle) return null;
+  try {
+    const chave = await crypto.subtle.importKey('jwk', { ...P.licenca.chavePublica, ext: true }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+    const ok = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, chave, bytesDeB64url(partes[2]), new TextEncoder().encode(partes[1]));
+    if (!ok) return null;
+    const d = JSON.parse(new TextDecoder().decode(bytesDeB64url(partes[1])));
+    if (!d.n || !/^\d{4}-\d{2}-\d{2}$/.test(d.v)) return null;
+    return { codigo: partes.join('.'), nome: d.n, validade: d.v, emitido: d.e };
+  } catch {
+    return null;
+  }
+}
+
+const vitalicia = (lic) => lic && lic.validade === '9999-12-31';
+const fmtValidade = (lic) => (vitalicia(lic) ? 'vitalícia' : `até ${fmtData(lic.validade)}`);
+// Licença em vigor (vale até o fim do dia da validade).
+function licencaValida() {
+  const lic = estado && estado.config.licenca;
+  return lic && hoje() <= lic.validade ? lic : null;
+}
+const diasParaVencer = (lic) => Math.round((new Date(lic.validade) - new Date(hoje())) / 86400000);
+
+// Título e WhatsApp valem só para o dono da licença que os cadastrou (troca de licença = dados limpos).
+function dadosAssessor(lic) {
   const c = (estado && estado.config.assessor) || {};
+  return lic && c.dono === lic.nome ? c : {};
+}
+
+// Quem atende neste celular: o assessor da licença em vigor (nome travado na licença; título e
+// WhatsApp configuráveis). Sem licença válida, o atendimento volta para o padrão (Michel).
+function assessor() {
+  const lic = licencaValida();
+  if (!lic) return { ...P.planejador };
+  const c = dadosAssessor(lic);
+  const ehAutor = lic.nome === P.planejador.nome;
   return {
-    nome: c.nome || P.planejador.nome,
+    nome: lic.nome,
     titulo: c.titulo || P.planejador.titulo,
-    whatsapp: c.whatsapp || P.planejador.whatsapp,
+    whatsapp: c.whatsapp || (ehAutor ? P.planejador.whatsapp : ''),
   };
+}
+// Se o assessor ainda não cadastrou o WhatsApp, o contato vai para Michel (e a mensagem também).
+const whatsAtendimento = () => assessor().whatsapp || P.planejador.whatsapp;
+const nomeAtendimento = () => (assessor().whatsapp ? assessor().nome : P.planejador.nome);
+
+// Crédito fixo da metodologia + responsável pelo atendimento.
+function creditos() {
+  const a = assessor();
+  if (a.nome === P.planejador.nome) return `Metodologia e atendimento: ${P.planejador.nome}, ${a.titulo}`;
+  return `Metodologia: ${P.planejador.nome} · Atendimento: ${a.nome}, ${a.titulo}`;
 }
 
 // "(49) 99999-9999" vira "5549999999999". Aceita também número já com 55.
@@ -263,6 +318,8 @@ function lerCampo(el) {
 // ===================== Telas =====================
 
 function render() {
+  conferirLicenca();
+  limparRelatorio();
   document.querySelectorAll('.abas button').forEach((b) => b.classList.toggle('ativa', b.dataset.aba === aba));
   const chip = document.getElementById('cliente-ativo');
   chip.hidden = !planejador();
@@ -300,6 +357,16 @@ function avisosTopo() {
   if (temDados && (!ult || diasDesde(ult) >= 7)) {
     html += `<div class="faixa-aviso">💾 ${ult ? `Último backup há ${diasDesde(ult)} dias.` : 'Você ainda não fez backup.'} Os dados ficam só neste celular: guarde uma cópia no Google Drive ou no seu WhatsApp.
       <div class="botoes"><button class="btn pequeno" data-acao="exportar">Fazer backup agora</button></div></div>`;
+  }
+  const lic = licencaValida();
+  if (planejador() && lic) {
+    const dias = diasParaVencer(lic);
+    if (!vitalicia(lic) && dias <= P.licenca.avisoDias) {
+      html += `<div class="faixa-aviso">🔑 Sua licença do Modo Planejador vence ${dias === 0 ? 'hoje' : `em ${dias} ${dias === 1 ? 'dia' : 'dias'}`} (${fmtData(lic.validade)}). Fale com ${esc(P.planejador.nome)} para renovar.</div>`;
+    }
+    if (!assessor().whatsapp) {
+      html += `<div class="faixa-aviso">📱 Cadastre o seu WhatsApp em <b>Ajustes</b>. Enquanto isso, os contatos dos clientes vão para ${esc(P.planejador.nome)}.</div>`;
+    }
   }
   return html;
 }
@@ -346,6 +413,7 @@ function telaBoasVindas() {
       <p>Em cerca de 15 minutos, você responde perguntas sobre a sua vida financeira e recebe um <b>plano completo</b>, no mesmo método usado por planejadores financeiros profissionais.</p>
       <p>🔒 <b>Privacidade:</b> tudo o que você digitar fica guardado <b>só neste celular</b>. Não há cadastro, login nem servidor.</p>
       <p class="legal">O plano é educativo e usa estimativas. Não é recomendação individual de investimento. Para aplicar o plano com segurança, converse com um profissional.</p>
+      <p class="legal">${esc(P.direitos)}</p>
       <form class="campos" onsubmit="return false">
         <label class="check"><input type="checkbox" id="ck-consente"> Li e entendi</label>
       </form>
@@ -495,10 +563,16 @@ function telaPlano() {
   const barras = r.dominios.filter((d) => d.aplicavel !== false && d.nota !== null).map((d) => `
     <div class="barra-linha"><span>${esc(d.nome)}</span><div class="barra"><div style="width:${d.nota}%;background:${corNota(d.nota)}"></div></div><b>${d.nota}</b></div>`).join('');
 
+  const faltam = ETAPAS.filter((e) => !pf.etapasFeitas[e.id]).length;
+  const botaoRelatorio = faltam === 0
+    ? '<button class="btn ouro" data-acao="relatorio">📑 Relatório completo para o cliente</button>'
+    : `<p class="sub" style="width:100%">📑 O relatório completo em PDF (com todos os dados) é liberado quando as 10 etapas estiverem preenchidas. Falta${faltam > 1 ? 'm' : ''} ${faltam}.</p>`;
+
   return `
+    <div class="so-relatorio">${capaRelatorio(pf, r)}</div>
     <div class="so-impressao">
       <h2 style="margin:0">Plano Financeiro de ${esc(pf.pessoal.nome || '')}</h2>
-      <p class="sub">Gerado em ${fmtData(hoje())} · Metodologia de ${esc(assessor().nome)}, ${esc(assessor().titulo)}</p>
+      <p class="sub">Gerado em ${fmtData(hoje())} · ${esc(creditos())}</p>
     </div>
     <div class="cartao">
       <div class="cabeca-plano">${svgIndice(r.indice)}
@@ -510,7 +584,8 @@ function telaPlano() {
     <div class="cartao destaque"><h3>Seu plano de ação</h3>${planoAcao || '<p>Parabéns! Nenhuma ação urgente. Mantenha o plano e revise a cada 6 meses.</p>'}</div>
     <div class="botoes nao-imprimir">
       <button class="btn whats" data-acao="whats">💬 Quero implementar com um planejador</button>
-      <button class="btn" data-acao="pdf">📄 Salvar em PDF</button>
+      <button class="btn" data-acao="pdf">📄 PDF do plano</button>
+      ${botaoRelatorio}
     </div>
     <h2>Análise por área</h2>
     ${dominios}
@@ -523,13 +598,127 @@ function telaPlano() {
         <li>Tabelas conferidas em ${esc(r.premissas.verificadoEm)}.</li>
       </ul>
       <p class="legal" style="margin-top:8px">Este plano é educativo e foi gerado a partir das informações que você forneceu. Não constitui recomendação individual de investimento nem consultoria jurídica ou contábil. Rentabilidades passadas e estimativas não garantem resultados futuros.</p>
-      <p class="legal">${esc(assessor().nome)} · ${esc(assessor().titulo)}</p>
-    </div>`;
+      <p class="legal">${esc(creditos())}</p>
+      <p class="legal">${esc(P.direitos)}</p>
+    </div>
+    <div class="so-relatorio">${anexoDados(pf, r)}</div>`;
+}
+
+// ---------- Relatório completo (PDF para o cliente) ----------
+
+function capaRelatorio(pf, r) {
+  const a = assessor();
+  const whats = whatsAtendimento();
+  return `<div class="capa">
+    <div class="capa-marca">Planejador Financeiro</div>
+    <h1>Relatório de Planejamento Financeiro</h1>
+    <p class="capa-cliente">${esc(pf.pessoal.nome || 'Cliente')}</p>
+    <p class="sub">Elaborado em ${fmtData(hoje())}</p>
+    <div class="capa-indice">${svgIndice(r.indice)}<div><div class="rotulo">Índice de Saúde Financeira</div><div class="faixa" style="color:${corNota(r.indice)}">${esc(r.faixa)}</div></div></div>
+    <table class="tabela capa-sumario">
+      <tr><td>1. Plano de ação e notas por área</td></tr>
+      <tr><td>2. Análise por área</td></tr>
+      <tr><td>3. Anexo: dados informados pelo cliente</td></tr>
+      <tr><td>4. Declaração e assinaturas</td></tr>
+    </table>
+    <p><b>Atendimento:</b> ${esc(nomeAtendimento())}${nomeAtendimento() === a.nome ? `, ${esc(a.titulo)}` : ''} · WhatsApp ${esc(mostrarWhats(whats))}</p>
+    <p><b>Metodologia:</b> ${esc(P.planejador.nome)}</p>
+    <p class="legal">Documento confidencial: contém dados pessoais e financeiros protegidos pela LGPD (Lei 13.709/2018). Destinado exclusivamente ao cliente identificado acima.</p>
+  </div>`;
+}
+
+function valorCampo(c, v) {
+  if (c.t === 'sim') return v ? 'Sim' : 'Não';
+  if (v === '' || v === null || v === undefined) return '—';
+  if (c.t === 'moeda') return brl(v);
+  if (c.t === 'pct') return `${mostrarNum(v)}% ao mês`;
+  if (c.t === 'sel') { const o = c.op.find(([x]) => String(x) === String(v)); return o ? o[1] : String(v); }
+  return String(v);
+}
+
+function anexoDados(pf, r) {
+  const A = r.agregados;
+  const sobra = A.rendaMensal - A.gastos - A.parcelas;
+  const linha = (rot, val) => `<tr><td>${esc(rot)}</td><td class="num">${esc(val)}</td></tr>`;
+  let html = `<div class="quebra"></div><h2>Anexo: dados informados pelo cliente</h2>
+    <p class="sub">Informações fornecidas por ${esc(pf.pessoal.nome || 'o cliente')} e usadas nos cálculos deste plano. Valores mensais, exceto quando indicado.</p>
+    <div class="cartao"><h3>Resumo financeiro</h3><table class="tabela">
+      ${linha('Renda mensal (líquida + outras)', brl(A.rendaMensal))}
+      ${linha('Gastos mensais', brl(A.gastos))}
+      ${linha('Parcelas de dívidas por mês', brl(A.parcelas))}
+      ${linha('Sobra mensal', brl(sobra))}
+      ${linha('Investe por mês', brl(A.investe))}
+      ${linha('Patrimônio financeiro', brl(A.financeiro))}
+      ${linha('Patrimônio total', brl(A.total))}
+      ${linha('Dívidas', brl(A.totalDividas))}
+      ${linha('Patrimônio líquido', brl(A.liquido))}
+    </table></div>`;
+
+  ETAPAS.forEach((e, i) => {
+    let corpo = '';
+    if (e.perfil) {
+      const resp = pf.suitability.respostas || [];
+      const { perfil: pfInv } = Calc.perfilInvestidor(resp);
+      corpo = `<table class="tabela">${Calc.QUESTOES_PERFIL.map((q, j) => linha(`${j + 1}. ${q.p}`, resp[j] === undefined || resp[j] === null ? '—' : q.o[resp[j]])).join('')}</table>
+        <p style="margin-top:6px"><b>Resultado: perfil ${esc(pfInv || 'não definido')}</b></p>`;
+    } else {
+      const linhas = e.campos.filter((c) => !c.se || c.se(pf)).map((c) => (c.sec
+        ? `<tr><th colspan="2">${esc(c.sec)}</th></tr>`
+        : linha(c.l, valorCampo(c, getPath(pf, c.k))))).join('');
+      if (linhas) corpo += `<table class="tabela">${linhas}</table>`;
+    }
+    if (e.repetidor) {
+      const R = e.repetidor;
+      const itens = getPath(pf, R.k) || [];
+      corpo += `<h3 style="margin-top:10px">${esc(R.titulo)}</h3>`;
+      corpo += itens.length
+        ? `<table class="tabela"><tr>${R.campos.map((c) => `<th>${esc(c.l)}</th>`).join('')}</tr>${itens.map((it) => `<tr>${R.campos.map((c) => `<td>${esc(valorCampo(c, it[c.k]))}</td>`).join('')}</tr>`).join('')}</table>`
+        : '<p class="sub">Nenhum informado.</p>';
+    }
+    html += `<div class="cartao"><h3>${i + 1}. ${esc(e.titulo)}</h3>${corpo}</div>`;
+  });
+
+  html += `<div class="cartao assinaturas">
+    <h3>Declaração</h3>
+    <p>Declaro que as informações deste relatório foram fornecidas por mim e refletem a minha situação financeira em ${fmtData(hoje())}. Estou ciente de que o plano é educativo, baseado em estimativas, e de que não constitui recomendação individual de investimento.</p>
+    <div class="linhas-assinatura">
+      <div><span></span>${esc(pf.pessoal.nome || 'Cliente')}<br><small>Cliente</small></div>
+      <div><span></span>${esc(nomeAtendimento())}<br><small>Assessor responsável pelo atendimento</small></div>
+    </div>
+    <p class="legal">Local e data: ______________________, ____/____/______</p>
+    <p class="legal">${esc(P.direitos)}</p>
+  </div>`;
+  return html;
+}
+
+function pedirRelatorio() {
+  const pf = perfil();
+  abrirModal(`
+    <h3>Relatório completo</h3>
+    <p>O PDF terá capa, o plano completo, <b>todos os dados informados</b> e a declaração para assinatura.</p>
+    <p class="faixa-aviso">🔒 O documento contém dados pessoais e financeiros de ${esc(pf.pessoal.nome || 'cliente')} (LGPD). Envie apenas para o próprio cliente.</p>
+    <p class="sub">Na tela seguinte, escolha <b>Salvar como PDF</b> e toque em salvar. Depois, envie o arquivo pelo WhatsApp ou e-mail do cliente.</p>
+    <div class="botoes"><button class="btn secundario" data-acao="fechar">Cancelar</button><button class="btn ouro" data-acao="gerar-relatorio">Gerar PDF</button></div>`);
+}
+
+function gerarRelatorio() {
+  const pf = perfil();
+  fecharModal();
+  document.body.classList.add('relatorio');
+  document.title = `Relatorio financeiro completo - ${pf.pessoal.nome || 'cliente'} - ${fmtData(hoje()).replace(/\//g, '-')}`;
+  // No Android a impressão não bloqueia: a limpeza fica para o fim da impressão ou para a próxima tela.
+  window.addEventListener('afterprint', limparRelatorio, { once: true });
+  window.print();
+}
+
+function limparRelatorio() {
+  document.body.classList.remove('relatorio');
+  document.title = 'Planejador Financeiro';
 }
 
 function mensagemWhats(pf, r) {
   const prior = r.acoes.slice(0, 3).map((a, i) => `${i + 1}. ${a.titulo}`).join('\n');
-  return `Olá, ${primeiroNome(assessor().nome)}! Fiz meu planejamento no app Planejador Financeiro e quero ajuda para colocar em prática.\n\n` +
+  return `Olá, ${primeiroNome(nomeAtendimento())}! Fiz meu planejamento no app Planejador Financeiro e quero ajuda para colocar em prática.\n\n` +
     `Nome: ${pf.pessoal.nome || ''}\nIdade: ${pf.pessoal.idade || ''}\nEstado: ${pf.pessoal.uf || ''}\n` +
     `Índice de Saúde Financeira: ${r.indice}/100 (${r.faixa})\n` +
     (prior ? `\nMinhas prioridades:\n${prior}` : '');
@@ -544,7 +733,7 @@ function abrirWhats() {
     <p class="sub">O WhatsApp vai abrir com a mensagem abaixo. Você pode editar o texto. Nada é enviado até você tocar em enviar no WhatsApp.</p>
     <form class="campos" onsubmit="return false">
       <textarea id="msg-whats">${esc(mensagemWhats(pf, r))}</textarea>
-      <label class="check"><input type="checkbox" id="ck-lgpd"> Autorizo ${esc(assessor().nome)} a usar estas informações para entrar em contato comigo (LGPD).</label>
+      <label class="check"><input type="checkbox" id="ck-lgpd"> Autorizo ${esc(nomeAtendimento())} a usar estas informações para entrar em contato comigo (LGPD).</label>
     </form>
     <div class="botoes"><button class="btn secundario" data-acao="fechar">Cancelar</button><button class="btn whats" data-acao="enviar-whats">Abrir WhatsApp</button></div>`);
 }
@@ -665,41 +854,82 @@ function telaAjustes() {
     <h2>Sobre</h2>
     <div class="cartao legal">
       <p>Planejador Financeiro ${VERSAO_APP} · tabelas conferidas em ${esc(P.verificadoEm)}.</p>
-      <p>Metodologia: ${esc(assessor().nome)}, ${esc(assessor().titulo)}.</p>
+      <p>${esc(creditos())}.</p>
       <p>O plano é educativo e não substitui a recomendação individual de um profissional.</p>
+      <p>${esc(P.direitos)}</p>
     </div>`;
 }
 
 // Só aparece no Modo Planejador (com PIN), para o cliente não trocar o contato.
 function telaAssessor() {
-  const c = estado.config.assessor || {};
+  const c = dadosAssessor(licencaValida());
+  const lic = licencaValida();
   return `
     <h2>Seus dados de assessor</h2>
     <div class="cartao">
-      <p class="sub">Aparecem no plano, no PDF e no botão do WhatsApp deste celular. Em branco, vale o padrão: ${esc(P.planejador.nome)}.</p>
+      <p class="sub">Aparecem no plano, no PDF e no botão do WhatsApp deste celular. A metodologia continua creditada a ${esc(P.planejador.nome)}.</p>
       <form class="campos" onsubmit="return false">
-        <label>Seu nome<input type="text" id="as-nome" value="${esc(c.nome || '')}" placeholder="${esc(P.planejador.nome)}" autocomplete="name"></label>
+        <label>Nome (definido pela licença)<input type="text" value="${esc(lic.nome)}" disabled></label>
         <label>Título profissional<input type="text" id="as-titulo" value="${esc(c.titulo || '')}" placeholder="${esc(P.planejador.titulo)}"></label>
-        <label>WhatsApp com DDD<input type="text" inputmode="tel" id="as-whats" value="${esc(mostrarWhats(c.whatsapp))}" placeholder="${esc(mostrarWhats(P.planejador.whatsapp))}" autocomplete="tel"></label>
+        <label>WhatsApp com DDD<input type="text" inputmode="tel" id="as-whats" value="${esc(mostrarWhats(c.whatsapp))}" placeholder="(49) 99999-9999" autocomplete="tel"></label>
       </form>
-      <div class="botoes">
-        <button class="btn secundario" data-acao="assessor-padrao">Voltar ao padrão</button>
-        <button class="btn ouro" data-acao="assessor-salvar">Salvar</button>
-      </div>
-      <p class="sub" style="margin-top:8px">Em uso agora: <b>${esc(assessor().nome)}</b> · ${esc(mostrarWhats(assessor().whatsapp))}</p>
+      <div class="botoes"><button class="btn ouro" data-acao="assessor-salvar">Salvar</button></div>
+      <p class="sub" style="margin-top:8px">${esc(creditos())}</p>
+    </div>
+    <h2>Licença</h2>
+    <div class="cartao">
+      <p>🔑 <b>${esc(lic.nome)}</b> · ${fmtValidade(lic)}</p>
+      <button class="btn secundario cheio" data-acao="trocar-licenca">Inserir novo código (renovação)</button>
     </div>`;
 }
 
 async function salvarAssessor() {
-  const nome = document.getElementById('as-nome').value.trim();
   const titulo = document.getElementById('as-titulo').value.trim();
   const whats = normalizarWhats(document.getElementById('as-whats').value);
   if (whats === null) return avisar('WhatsApp inválido. Use DDD + número, ex.: (49) 99999-9999.');
-  if (whats && !nome) return avisar('Preencha também o seu nome, para o cliente saber com quem vai falar.');
-  estado.config.assessor = { nome, titulo, whatsapp: whats };
+  estado.config.assessor = { dono: licencaValida().nome, titulo, whatsapp: whats };
   await salvar();
   render();
   avisar('Dados do assessor salvos.');
+}
+
+function pedirCodigo(motivo = '') {
+  abrirModal(`
+    <h3>Código de ativação</h3>
+    ${motivo ? `<p class="faixa-aviso">${esc(motivo)}</p>` : ''}
+    <p class="sub">O Modo Planejador é licenciado por ${esc(P.planejador.nome)}. Cole o código que você recebeu.</p>
+    <form class="campos" onsubmit="return false">
+      <textarea id="codigo-licenca" placeholder="PF1...." style="min-height:110px;font-family:monospace;font-size:0.8rem"></textarea>
+    </form>
+    <div class="botoes"><button class="btn secundario" data-acao="fechar">Cancelar</button><button class="btn ouro" data-acao="confirmar-codigo">Ativar</button></div>
+    <p class="legal" style="margin-top:10px">Não tem código? Fale com ${esc(P.planejador.nome)}: <a href="https://wa.me/${P.planejador.whatsapp}" target="_blank" rel="noopener">WhatsApp</a>.</p>`);
+}
+
+async function confirmarCodigo() {
+  const lic = await verificarCodigo(document.getElementById('codigo-licenca').value);
+  if (!lic) return avisar('Código inválido. Confira se copiou o código inteiro.');
+  if (hoje() > lic.validade) return avisar(`Este código venceu em ${fmtData(lic.validade)}.`);
+  const anterior = estado.config.licenca;
+  if (anterior && anterior.nome !== lic.nome && estado.perfis.some((p) => Object.keys(p.etapasFeitas).length)) {
+    if (!confirm(`Este código é de ${lic.nome}, e este celular estava licenciado para ${anterior.nome}. Continuar?`)) return;
+  }
+  estado.config.licenca = lic;
+  await salvar();
+  fecharModal();
+  avisar(`Licença ativada: ${lic.nome}, ${fmtValidade(lic)}.`);
+  if (!planejador()) pedirPin(); else render();
+}
+
+// Licença vencida ou removida: sai do Modo Planejador (os dados continuam guardados).
+function conferirLicenca() {
+  if (planejador() && !licencaValida()) {
+    estado.config.modoPlanejador = false;
+    salvar();
+    const lic = estado.config.licenca;
+    avisar(lic ? `Licença vencida em ${fmtData(lic.validade)}. Fale com ${P.planejador.nome} para renovar.` : 'Modo Planejador exige licença.');
+    return false;
+  }
+  return true;
 }
 
 function exportar() {
@@ -798,6 +1028,7 @@ async function apagar() {
     estado = estadoInicial();
     estado.config.pinHash = cfg.pinHash;
     estado.config.assessor = cfg.assessor || {};
+    estado.config.licenca = cfg.licenca;
   }
   await salvar();
   irPara('inicio');
@@ -846,15 +1077,21 @@ document.addEventListener('click', async (ev) => {
     case 'enviar-whats': {
       if (!document.getElementById('ck-lgpd').checked) return avisar('Marque a autorização para continuar.');
       const msg = document.getElementById('msg-whats').value;
-      window.open(`https://wa.me/${assessor().whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+      window.open(`https://wa.me/${whatsAtendimento()}?text=${encodeURIComponent(msg)}`, '_blank');
       return fecharModal();
     }
     case 'pdf': return imprimirPlano();
+    case 'relatorio': return pedirRelatorio();
+    case 'gerar-relatorio': return gerarRelatorio();
     case 'fechar': return fecharModal();
     case 'limpar-sim': sim = {}; return render();
     case 'exportar': return exportar();
     case 'importar': return document.getElementById('arq-importar').click();
-    case 'entrar-planejador': return pedirPin();
+    case 'entrar-planejador': {
+      if (licencaValida()) return pedirPin();
+      const lic = estado.config.licenca;
+      return pedirCodigo(lic ? `A licença de ${lic.nome} venceu em ${fmtData(lic.validade)}. Insira o código de renovação.` : '');
+    }
     case 'confirmar-pin': return confirmarPin();
     case 'sair-planejador':
       estado.config.modoPlanejador = false;
@@ -876,12 +1113,8 @@ document.addEventListener('click', async (ev) => {
       return irPara('dados');
     case 'apagar': return apagar();
     case 'assessor-salvar': return salvarAssessor();
-    case 'assessor-padrao':
-      if (!confirm('Voltar a usar o nome e o WhatsApp padrão do app?')) return;
-      estado.config.assessor = {};
-      await salvar();
-      render();
-      return avisar('Padrão restaurado.');
+    case 'confirmar-codigo': return confirmarCodigo();
+    case 'trocar-licenca': return pedirCodigo();
     case 'instalar':
       if (!pedidoInstalar) return avisar('No Chrome, toque no menu ⋮ e em "Instalar app".');
       pedidoInstalar.prompt();
@@ -924,10 +1157,13 @@ async function iniciar() {
     if (!estado.perfis.length) estado.perfis.push(novoPerfil());
     if (!estado.perfis.some((p) => p.id === estado.ativoId)) estado.ativoId = estado.perfis[0].id;
     estado.config = { consentiu: false, modoPlanejador: false, pinHash: '', ...(estado.config || {}) };
+    // Relê a licença de dentro do código assinado: nome e validade editados à mão são desfeitos.
+    if (estado.config.licenca) estado.config.licenca = await verificarCodigo(estado.config.licenca.codigo);
   } catch (e) {
     estado = estadoInicial();
     avisar('Armazenamento indisponível: os dados não serão salvos.');
   }
+  conferirLicenca();
   pedirArmazenamentoPersistente();
   render();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

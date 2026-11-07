@@ -1,3 +1,4 @@
+/* © 2026 Michel Ebertz. Todos os direitos reservados. Proibido copiar, reproduzir, modificar ou distribuir sem autorização por escrito (Leis 9.610/1998 e 9.609/1998). */
 :root {
   --fundo: #f4f6f8;
   --cartao: #ffffff;
@@ -188,7 +189,21 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
   max-width: 90vw; text-align: center;
 }
 
-.so-impressao { display: none; }
+.so-impressao, .so-relatorio { display: none; }
+
+/* Relatório completo */
+.capa { text-align: center; padding: 30px 10px; break-after: page; }
+.capa-marca { font-size: 0.9rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--destaque); font-weight: 800; }
+.capa h1 { font-size: 1.7rem; margin: 18px 0 30px; color: var(--primaria); }
+.capa-cliente { font-size: 1.5rem; font-weight: 800; margin: 0 0 4px; }
+.capa-indice { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 30px 0; text-align: left; }
+.capa-sumario { max-width: 420px; margin: 0 auto 30px; text-align: left; }
+.capa p { margin: 6px 0; }
+.quebra { break-before: page; }
+.assinaturas { break-inside: avoid; }
+.linhas-assinatura { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 50px 0 20px; text-align: center; font-size: 0.9rem; }
+.linhas-assinatura span { display: block; border-top: 1px solid var(--texto); margin-bottom: 6px; }
+table.tabela th { background: var(--fundo); }
 
 /* PDF (Imprimir > Salvar como PDF) */
 @media print {
@@ -197,6 +212,8 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
   .topo, .abas, .nao-imprimir, dialog, .aviso { display: none !important; }
   main { padding: 0; max-width: none; }
   .so-impressao { display: block; }
+  body.relatorio .so-relatorio { display: block; }
+  body.relatorio .so-impressao { display: none; }
   .cartao { break-inside: avoid; border-color: #bbb; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { margin: 14mm; }

@@ -1,3 +1,4 @@
+// © 2026 Michel Ebertz. Todos os direitos reservados. Proibido copiar, reproduzir, modificar ou distribuir sem autorização por escrito (Leis 9.610/1998 e 9.609/1998).
 // Motor de cálculo do planejamento financeiro (os 6 domínios do planejamento
 // profissional + reserva e dívidas). Funções puras: não mexem na tela,
 // por isso rodam igual no celular e no Node (testes/calc.test.js).

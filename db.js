@@ -1,3 +1,4 @@
+// © 2026 Michel Ebertz. Todos os direitos reservados. Proibido copiar, reproduzir, modificar ou distribuir sem autorização por escrito (Leis 9.610/1998 e 9.609/1998).
 // Armazenamento local no celular (IndexedDB). Nada sai do aparelho.
 // Todo o estado fica num único registro (perfis, respostas e histórico).
 
