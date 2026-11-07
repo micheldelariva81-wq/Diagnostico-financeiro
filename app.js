@@ -2,7 +2,7 @@
 
 // ===================== Utilidades =====================
 
-const VERSAO_APP = 'v2';
+const VERSAO_APP = 'v3';
 const P = PARAMETROS;
 
 const fmtMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -98,6 +98,26 @@ let sim = {};
 
 const perfil = () => estado.perfis.find((p) => p.id === estado.ativoId) || estado.perfis[0];
 const planejador = () => !!estado.config.modoPlanejador;
+
+// Assessor deste celular: o que foi configurado em Ajustes; o que ficar em branco usa o padrão de parametros.js.
+function assessor() {
+  const c = (estado && estado.config.assessor) || {};
+  return {
+    nome: c.nome || P.planejador.nome,
+    titulo: c.titulo || P.planejador.titulo,
+    whatsapp: c.whatsapp || P.planejador.whatsapp,
+  };
+}
+
+// "(49) 99999-9999" vira "5549999999999". Aceita também número já com 55.
+function normalizarWhats(txt) {
+  const d = String(txt || '').replace(/\D/g, '');
+  if (!d) return '';
+  if (d.length === 10 || d.length === 11) return '55' + d;
+  if ((d.length === 12 || d.length === 13) && d.startsWith('55')) return d;
+  return null;
+}
+const mostrarWhats = (d) => (d && d.length >= 12 ? `(${d.slice(2, 4)}) ${d.slice(4, -4)}-${d.slice(-4)}` : '');
 
 async function salvar() {
   try { await salvarEstado(estado); } catch (e) { avisar('Não foi possível salvar: ' + e.message); }
@@ -478,7 +498,7 @@ function telaPlano() {
   return `
     <div class="so-impressao">
       <h2 style="margin:0">Plano Financeiro de ${esc(pf.pessoal.nome || '')}</h2>
-      <p class="sub">Gerado em ${fmtData(hoje())} · Metodologia de ${esc(P.planejador.nome)}, ${esc(P.planejador.titulo)}</p>
+      <p class="sub">Gerado em ${fmtData(hoje())} · Metodologia de ${esc(assessor().nome)}, ${esc(assessor().titulo)}</p>
     </div>
     <div class="cartao">
       <div class="cabeca-plano">${svgIndice(r.indice)}
@@ -503,13 +523,13 @@ function telaPlano() {
         <li>Tabelas conferidas em ${esc(r.premissas.verificadoEm)}.</li>
       </ul>
       <p class="legal" style="margin-top:8px">Este plano é educativo e foi gerado a partir das informações que você forneceu. Não constitui recomendação individual de investimento nem consultoria jurídica ou contábil. Rentabilidades passadas e estimativas não garantem resultados futuros.</p>
-      <p class="legal">${esc(P.planejador.nome)} · ${esc(P.planejador.titulo)}</p>
+      <p class="legal">${esc(assessor().nome)} · ${esc(assessor().titulo)}</p>
     </div>`;
 }
 
 function mensagemWhats(pf, r) {
   const prior = r.acoes.slice(0, 3).map((a, i) => `${i + 1}. ${a.titulo}`).join('\n');
-  return `Olá, ${primeiroNome(P.planejador.nome)}! Fiz meu planejamento no app Planejador Financeiro e quero ajuda para colocar em prática.\n\n` +
+  return `Olá, ${primeiroNome(assessor().nome)}! Fiz meu planejamento no app Planejador Financeiro e quero ajuda para colocar em prática.\n\n` +
     `Nome: ${pf.pessoal.nome || ''}\nIdade: ${pf.pessoal.idade || ''}\nEstado: ${pf.pessoal.uf || ''}\n` +
     `Índice de Saúde Financeira: ${r.indice}/100 (${r.faixa})\n` +
     (prior ? `\nMinhas prioridades:\n${prior}` : '');
@@ -524,7 +544,7 @@ function abrirWhats() {
     <p class="sub">O WhatsApp vai abrir com a mensagem abaixo. Você pode editar o texto. Nada é enviado até você tocar em enviar no WhatsApp.</p>
     <form class="campos" onsubmit="return false">
       <textarea id="msg-whats">${esc(mensagemWhats(pf, r))}</textarea>
-      <label class="check"><input type="checkbox" id="ck-lgpd"> Autorizo ${esc(P.planejador.nome)} a usar estas informações para entrar em contato comigo (LGPD).</label>
+      <label class="check"><input type="checkbox" id="ck-lgpd"> Autorizo ${esc(assessor().nome)} a usar estas informações para entrar em contato comigo (LGPD).</label>
     </form>
     <div class="botoes"><button class="btn secundario" data-acao="fechar">Cancelar</button><button class="btn whats" data-acao="enviar-whats">Abrir WhatsApp</button></div>`);
 }
@@ -635,6 +655,8 @@ function telaAjustes() {
         : `<button class="btn cheio" data-acao="entrar-planejador">${estado.config.pinHash ? 'Entrar com PIN' : 'Ativar (criar PIN)'}</button>`}
     </div>
 
+    ${planejador() ? telaAssessor() : ''}
+
     <h2>Apagar</h2>
     <div class="cartao">
       <button class="btn perigo cheio" data-acao="apagar">${planejador() ? 'Apagar este cliente' : 'Apagar todos os meus dados'}</button>
@@ -643,9 +665,41 @@ function telaAjustes() {
     <h2>Sobre</h2>
     <div class="cartao legal">
       <p>Planejador Financeiro ${VERSAO_APP} · tabelas conferidas em ${esc(P.verificadoEm)}.</p>
-      <p>Metodologia: ${esc(P.planejador.nome)}, ${esc(P.planejador.titulo)}.</p>
+      <p>Metodologia: ${esc(assessor().nome)}, ${esc(assessor().titulo)}.</p>
       <p>O plano é educativo e não substitui a recomendação individual de um profissional.</p>
     </div>`;
+}
+
+// Só aparece no Modo Planejador (com PIN), para o cliente não trocar o contato.
+function telaAssessor() {
+  const c = estado.config.assessor || {};
+  return `
+    <h2>Seus dados de assessor</h2>
+    <div class="cartao">
+      <p class="sub">Aparecem no plano, no PDF e no botão do WhatsApp deste celular. Em branco, vale o padrão: ${esc(P.planejador.nome)}.</p>
+      <form class="campos" onsubmit="return false">
+        <label>Seu nome<input type="text" id="as-nome" value="${esc(c.nome || '')}" placeholder="${esc(P.planejador.nome)}" autocomplete="name"></label>
+        <label>Título profissional<input type="text" id="as-titulo" value="${esc(c.titulo || '')}" placeholder="${esc(P.planejador.titulo)}"></label>
+        <label>WhatsApp com DDD<input type="text" inputmode="tel" id="as-whats" value="${esc(mostrarWhats(c.whatsapp))}" placeholder="${esc(mostrarWhats(P.planejador.whatsapp))}" autocomplete="tel"></label>
+      </form>
+      <div class="botoes">
+        <button class="btn secundario" data-acao="assessor-padrao">Voltar ao padrão</button>
+        <button class="btn ouro" data-acao="assessor-salvar">Salvar</button>
+      </div>
+      <p class="sub" style="margin-top:8px">Em uso agora: <b>${esc(assessor().nome)}</b> · ${esc(mostrarWhats(assessor().whatsapp))}</p>
+    </div>`;
+}
+
+async function salvarAssessor() {
+  const nome = document.getElementById('as-nome').value.trim();
+  const titulo = document.getElementById('as-titulo').value.trim();
+  const whats = normalizarWhats(document.getElementById('as-whats').value);
+  if (whats === null) return avisar('WhatsApp inválido. Use DDD + número, ex.: (49) 99999-9999.');
+  if (whats && !nome) return avisar('Preencha também o seu nome, para o cliente saber com quem vai falar.');
+  estado.config.assessor = { nome, titulo, whatsapp: whats };
+  await salvar();
+  render();
+  avisar('Dados do assessor salvos.');
 }
 
 function exportar() {
@@ -743,6 +797,7 @@ async function apagar() {
     const cfg = estado.config;
     estado = estadoInicial();
     estado.config.pinHash = cfg.pinHash;
+    estado.config.assessor = cfg.assessor || {};
   }
   await salvar();
   irPara('inicio');
@@ -791,7 +846,7 @@ document.addEventListener('click', async (ev) => {
     case 'enviar-whats': {
       if (!document.getElementById('ck-lgpd').checked) return avisar('Marque a autorização para continuar.');
       const msg = document.getElementById('msg-whats').value;
-      window.open(`https://wa.me/${P.planejador.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+      window.open(`https://wa.me/${assessor().whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
       return fecharModal();
     }
     case 'pdf': return imprimirPlano();
@@ -820,6 +875,13 @@ document.addEventListener('click', async (ev) => {
       await salvar();
       return irPara('dados');
     case 'apagar': return apagar();
+    case 'assessor-salvar': return salvarAssessor();
+    case 'assessor-padrao':
+      if (!confirm('Voltar a usar o nome e o WhatsApp padrão do app?')) return;
+      estado.config.assessor = {};
+      await salvar();
+      render();
+      return avisar('Padrão restaurado.');
     case 'instalar':
       if (!pedidoInstalar) return avisar('No Chrome, toque no menu ⋮ e em "Instalar app".');
       pedidoInstalar.prompt();
