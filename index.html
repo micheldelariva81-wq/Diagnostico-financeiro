@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f2d3d">
+  <meta name="description" content="Monte seu planejamento financeiro completo, com os dados guardados só no seu celular">
+  <title>Planejador Financeiro</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topo">
+    <h1 id="titulo">Planejador Financeiro</h1>
+    <span id="cliente-ativo" class="chip" hidden></span>
+  </header>
+
+  <main id="conteudo"></main>
+
+  <nav class="abas">
+    <button data-aba="inicio" class="ativa"><span>🏠</span>Início</button>
+    <button data-aba="dados"><span>📝</span>Dados</button>
+    <button data-aba="plano"><span>📈</span>Plano</button>
+    <button data-aba="simular"><span>🔮</span>Simular</button>
+    <button data-aba="ajustes"><span>⚙️</span>Ajustes</button>
+  </nav>
+
+  <dialog id="modal">
+    <div id="modal-corpo"></div>
+  </dialog>
+
+  <div id="aviso" class="aviso" hidden></div>
+
+  <script src="parametros.js"></script>
+  <script src="calc.js"></script>
+  <script src="db.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
