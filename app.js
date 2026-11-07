@@ -2,7 +2,7 @@
 
 // ===================== Utilidades =====================
 
-const VERSAO_APP = 'v1';
+const VERSAO_APP = 'v2';
 const P = PARAMETROS;
 
 const fmtMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -90,6 +90,9 @@ function estadoInicial() {
 
 let estado = null;
 let aba = 'inicio';
+let pedidoInstalar = null; // evento do Chrome que permite instalar o app com um toque
+const instalado = () => window.matchMedia('(display-mode: standalone)').matches;
+const diasDesde = (iso) => Math.floor((new Date(hoje()) - new Date(iso)) / 86400000);
 let etapaAberta = null;
 let sim = {};
 
@@ -265,15 +268,32 @@ function revisaoPendente(pf) {
   return { prox, vencida: hoje() >= prox };
 }
 
+function avisosTopo() {
+  let html = '';
+  if (pedidoInstalar && !instalado()) {
+    html += `<div class="cartao destaque"><h3>📲 Instale o app no celular</h3>
+      <p class="sub">Fica com ícone na tela inicial e funciona sem internet.</p>
+      <button class="btn ouro cheio" data-acao="instalar">Instalar</button></div>`;
+  }
+  const temDados = estado.perfis.some((p) => Object.keys(p.etapasFeitas).length);
+  const ult = estado.config.ultimoBackup;
+  if (temDados && (!ult || diasDesde(ult) >= 7)) {
+    html += `<div class="faixa-aviso">💾 ${ult ? `Último backup há ${diasDesde(ult)} dias.` : 'Você ainda não fez backup.'} Os dados ficam só neste celular: guarde uma cópia no Google Drive ou no seu WhatsApp.
+      <div class="botoes"><button class="btn pequeno" data-acao="exportar">Fazer backup agora</button></div></div>`;
+  }
+  return html;
+}
+
 function telaInicio() {
   if (!estado.config.consentiu) return telaBoasVindas();
-  if (planejador()) return telaClientes();
+  if (planejador()) return avisosTopo() + telaClientes();
   const pf = perfil();
   const { feitas, total } = progresso(pf);
   const ult = pf.historico[pf.historico.length - 1];
   const rev = revisaoPendente(pf);
   const nome = primeiroNome(pf.pessoal.nome);
   return `
+    ${avisosTopo()}
     ${rev && rev.vencida ? `<div class="faixa-aviso">⏰ Já passaram ${P.premissas.revisaoMeses} meses desde o seu último plano. Atualize os dados e veja sua evolução.</div>` : ''}
     <div class="cartao destaque">
       <h3>${nome ? `Olá, ${esc(nome)}!` : 'Seu planejamento financeiro'}</h3>
@@ -640,6 +660,10 @@ function exportar() {
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  estado.config.ultimoBackup = hoje();
+  salvar();
+  if (aba === 'inicio') render();
+  avisar('Backup salvo em Downloads. Envie para o Google Drive ou para o seu WhatsApp.');
 }
 
 function normalizarPerfil(p) {
@@ -796,6 +820,12 @@ document.addEventListener('click', async (ev) => {
       await salvar();
       return irPara('dados');
     case 'apagar': return apagar();
+    case 'instalar':
+      if (!pedidoInstalar) return avisar('No Chrome, toque no menu ⋮ e em "Instalar app".');
+      pedidoInstalar.prompt();
+      await pedidoInstalar.userChoice;
+      pedidoInstalar = null;
+      return render();
   }
 });
 
@@ -813,6 +843,14 @@ document.addEventListener('change', async (ev) => {
   await salvar();
   if (el.dataset.re) render();
 });
+
+// O Chrome avisa quando o app pode ser instalado; guardamos o aviso para o botão "Instalar".
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  pedidoInstalar = e;
+  if (estado && aba === 'inicio') render();
+});
+window.addEventListener('appinstalled', () => { pedidoInstalar = null; avisar('App instalado! Procure o ícone na tela inicial.'); });
 
 // ===================== Início =====================
 
