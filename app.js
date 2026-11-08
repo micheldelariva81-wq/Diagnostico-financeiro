@@ -3,7 +3,7 @@
 
 // ===================== Utilidades =====================
 
-const VERSAO_APP = 'v5';
+const VERSAO_APP = 'v6';
 const P = PARAMETROS;
 
 const fmtMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -99,6 +99,9 @@ let sim = {};
 
 const perfil = () => estado.perfis.find((p) => p.id === estado.ativoId) || estado.perfis[0];
 const planejador = () => !!estado.config.modoPlanejador;
+// App só para assessores (parametros.js): sem licença e PIN, só a tela de acesso aparece.
+const SO_ASSESSOR = !!P.soAssessor;
+const bloqueado = () => SO_ASSESSOR && !planejador();
 
 // ---------- Licença do Modo Planejador ----------
 // O código é assinado por Michel (licencas/gerar-licenca.js). O app só confere a assinatura
@@ -320,12 +323,24 @@ function lerCampo(el) {
 function render() {
   conferirLicenca();
   limparRelatorio();
-  document.querySelectorAll('.abas button').forEach((b) => b.classList.toggle('ativa', b.dataset.aba === aba));
   const chip = document.getElementById('cliente-ativo');
-  chip.hidden = !planejador();
-  if (planejador()) chip.textContent = perfil().pessoal.nome || 'Cliente sem nome';
+  const nav = document.querySelector('.abas');
+  if (bloqueado()) {
+    chip.hidden = true;
+    nav.style.display = 'none';
+    document.getElementById('titulo').textContent = 'Planejador Financeiro';
+    document.getElementById('conteudo').innerHTML = telaAcesso();
+    window.scrollTo(0, 0);
+    return;
+  }
+  nav.style.display = '';
+  document.querySelectorAll('.abas button').forEach((b) => b.classList.toggle('ativa', b.dataset.aba === aba));
+  chip.hidden = !planejador() || aba === 'inicio';
+  if (planejador()) chip.textContent = `👤 ${perfil().pessoal.nome || 'Cliente sem nome'} ▾`;
   const telas = { inicio: telaInicio, dados: telaDados, plano: telaPlano, simular: telaSimular, ajustes: telaAjustes };
-  const titulos = { inicio: planejador() ? 'Modo Planejador' : 'Planejador Financeiro', dados: 'Seus dados', plano: 'Seu plano', simular: 'Simular', ajustes: 'Ajustes' };
+  const titulos = planejador()
+    ? { inicio: 'Clientes', dados: 'Dados do cliente', plano: 'Plano do cliente', simular: 'Simular', ajustes: 'Ajustes' }
+    : { inicio: 'Planejador Financeiro', dados: 'Seus dados', plano: 'Seu plano', simular: 'Simular', ajustes: 'Ajustes' };
   document.getElementById('titulo').textContent = titulos[aba];
   document.getElementById('conteudo').innerHTML = telas[aba]();
   window.scrollTo(0, 0);
@@ -406,6 +421,37 @@ function telaInicio() {
     <p class="legal">🔒 Seus dados ficam só neste celular. Nada é enviado sem você pedir.</p>`;
 }
 
+// Tela de entrada do app só para assessores: licença (1ª vez) e PIN (a cada abertura).
+function telaAcesso() {
+  const lic = licencaValida();
+  const anterior = estado.config.licenca;
+  const instalar = pedidoInstalar && !instalado()
+    ? '<div class="botoes"><button class="btn secundario cheio" data-acao="instalar">📲 Instalar no celular</button></div>' : '';
+  if (!lic) {
+    return `
+      <div class="cartao destaque">
+        <h3>🔑 Acesso do assessor</h3>
+        <p>Ferramenta de planejamento financeiro para <b>assessores de investimentos</b> usarem nas reuniões com os seus clientes.</p>
+        ${anterior ? `<p class="faixa-aviso">A licença de ${esc(anterior.nome)} venceu em ${fmtData(anterior.validade)}. Os clientes continuam guardados neste celular: insira o código de renovação para voltar a acessá-los.</p>` : ''}
+        <p class="sub">O uso é licenciado por ${esc(P.planejador.nome)}. Cole o código de ativação que você recebeu.</p>
+        <div class="botoes"><button class="btn ouro cheio" data-acao="trocar-licenca">Inserir código de ativação</button></div>
+        <p class="legal" style="margin-top:10px">Não tem código? Fale com ${esc(P.planejador.nome)}: <a href="https://wa.me/${P.planejador.whatsapp}" target="_blank" rel="noopener">WhatsApp</a>.</p>
+      </div>
+      ${instalar}
+      <p class="legal">${esc(P.direitos)}</p>`;
+  }
+  return `
+    <div class="cartao destaque">
+      <h3>🔒 ${esc(lic.nome)}</h3>
+      <p class="sub">${estado.config.pinHash ? 'Digite o seu PIN para acessar os clientes deste celular.' : 'Crie um PIN para proteger os dados dos clientes deste celular.'}</p>
+      <div class="botoes"><button class="btn ouro cheio" data-acao="entrar-planejador">${estado.config.pinHash ? 'Entrar com PIN' : 'Criar PIN'}</button></div>
+      ${estado.config.pinHash ? '<div class="botoes"><button class="btn secundario cheio" data-acao="esqueci-pin">Esqueci o PIN</button></div>' : ''}
+    </div>
+    ${instalar}
+    <p class="legal">Licença ${fmtValidade(lic)} · Planejador Financeiro ${VERSAO_APP}</p>
+    <p class="legal">${esc(P.direitos)}</p>`;
+}
+
 function telaBoasVindas() {
   return `
     <div class="cartao destaque">
@@ -432,10 +478,14 @@ function telaClientes() {
     </div>`;
   }).join('');
   return `
-    <div class="botoes" style="margin-top:0"><button class="btn ouro" data-acao="novo-cliente">+ Novo cliente</button></div>
-    <h2>Clientes neste aparelho</h2>
+    <div class="cartao destaque">
+      <h3>Novo planejamento</h3>
+      <p class="sub">Começa uma ficha em branco. Os clientes anteriores continuam guardados na lista abaixo.</p>
+      <button class="btn ouro cheio" data-acao="novo-cliente">+ Novo cliente</button>
+    </div>
+    <h2>Clientes neste aparelho (${estado.perfis.length})</h2>
     <div class="lista">${itens}</div>
-    <p class="legal" style="margin-top:12px">Toque no cliente para trabalhar com ele. O cliente pode trazer o arquivo .json do app dele (Ajustes &gt; Exportar) e você importa aqui.</p>`;
+    <p class="legal" style="margin-top:12px">Toque no cliente para continuar o planejamento dele. Para trocar de cliente a qualquer momento, toque no nome dele no topo da tela.</p>`;
 }
 
 function graficoEvolucao(hist) {
@@ -580,13 +630,20 @@ function telaPlano() {
         <p class="sub" style="margin-top:6px">${esc(primeiroNome(nome))}, este é o retrato da sua vida financeira hoje. Abaixo estão as notas de cada área e o passo a passo para melhorar.</p></div>
       </div>
     </div>
+    <div class="cartao destaque nao-imprimir">
+      <h3>📄 Baixar em PDF</h3>
+      <p class="sub">O plano está pronto. Salve em PDF para enviar ao cliente pelo WhatsApp ou e-mail.</p>
+      <div class="botoes">
+        <button class="btn ouro" data-acao="pedir-pdf">📄 Baixar plano em PDF</button>
+        ${botaoRelatorio}
+      </div>
+    </div>
     <div class="cartao"><h3>Notas por área</h3><div class="barras">${barras}</div></div>
-    <div class="cartao destaque"><h3>Seu plano de ação</h3>${planoAcao || '<p>Parabéns! Nenhuma ação urgente. Mantenha o plano e revise a cada 6 meses.</p>'}</div>
-    <div class="botoes nao-imprimir">
+    <div class="cartao destaque"><h3>${planejador() ? 'Plano de ação' : 'Seu plano de ação'}</h3>${planoAcao || '<p>Parabéns! Nenhuma ação urgente. Mantenha o plano e revise a cada 6 meses.</p>'}</div>
+    ${SO_ASSESSOR ? '' : `<div class="botoes nao-imprimir">
       <button class="btn whats" data-acao="whats">💬 Quero implementar com um planejador</button>
       <button class="btn" data-acao="pdf">📄 PDF do plano</button>
-      ${botaoRelatorio}
-    </div>
+    </div>`}
     <h2>Análise por área</h2>
     ${dominios}
     <div class="cartao">
@@ -738,7 +795,19 @@ function abrirWhats() {
     <div class="botoes"><button class="btn secundario" data-acao="fechar">Cancelar</button><button class="btn whats" data-acao="enviar-whats">Abrir WhatsApp</button></div>`);
 }
 
+// Explica o "Salvar como PDF" antes de abrir a tela de impressão do celular.
+function pedirPdfPlano() {
+  const pf = perfil();
+  abrirModal(`
+    <h3>📄 Plano em PDF</h3>
+    <p>O PDF terá o Índice de Saúde Financeira, as notas por área, o plano de ação e a análise de cada área de <b>${esc(pf.pessoal.nome || 'cliente')}</b>.</p>
+    <p class="sub">Na tela seguinte, em <b>Impressora</b> (ou "Destino"), escolha <b>Salvar como PDF</b> e toque no botão de baixar. O arquivo vai para <b>Downloads</b>. Depois, envie pelo WhatsApp ou e-mail do cliente.</p>
+    <p class="faixa-aviso">🔒 O plano tem dados financeiros do cliente (LGPD). Envie apenas para ele.</p>
+    <div class="botoes"><button class="btn secundario" data-acao="fechar">Cancelar</button><button class="btn ouro" data-acao="pdf">Gerar PDF</button></div>`);
+}
+
 function imprimirPlano() {
+  if (modal().open) fecharModal();
   const pf = perfil();
   const antes = document.title;
   document.title = `Plano financeiro - ${pf.pessoal.nome || 'cliente'} - ${fmtData(hoje()).replace(/\//g, '-')}`;
@@ -825,9 +894,11 @@ function telaAjustes() {
   const pf = perfil();
   const rev = revisaoPendente(pf);
   return `
-    <h2 style="margin-top:4px">Seus dados</h2>
+    <h2 style="margin-top:4px">${planejador() ? 'Backup dos clientes' : 'Seus dados'}</h2>
     <div class="cartao">
-      <p class="sub">Os dados ficam só neste celular. Faça uma cópia de segurança de vez em quando, ou para levar ao planejador.</p>
+      <p class="sub">${planejador()
+        ? 'Os dados ficam só neste celular. Exporte uma cópia de todos os clientes toda semana e guarde no seu Google Drive. Para levar a outro celular, use Importar.'
+        : 'Os dados ficam só neste celular. Faça uma cópia de segurança de vez em quando, ou para levar ao planejador.'}</p>
       <div class="botoes">
         <button class="btn" data-acao="exportar">⬇️ Exportar (.json)</button>
         <button class="btn secundario" data-acao="importar">⬆️ Importar</button>
@@ -836,13 +907,19 @@ function telaAjustes() {
       ${rev ? `<p class="sub" style="margin-top:10px">Próxima revisão do plano: <b>${fmtData(rev.prox)}</b></p>` : ''}
     </div>
 
+    ${SO_ASSESSOR ? `
+    <h2>Segurança</h2>
+    <div class="cartao">
+      <p class="sub">O app pede o PIN sempre que é aberto e depois de ${P.bloqueioMinutos} minutos em segundo plano.</p>
+      <button class="btn secundario cheio" data-acao="sair-planejador">🔒 Bloquear agora</button>
+    </div>` : `
     <h2>Modo Planejador</h2>
     <div class="cartao">
       <p class="sub">Para uso do planejador em reunião: vários clientes no mesmo aparelho, protegidos por PIN.</p>
       ${planejador()
         ? '<button class="btn secundario cheio" data-acao="sair-planejador">Sair do Modo Planejador</button>'
         : `<button class="btn cheio" data-acao="entrar-planejador">${estado.config.pinHash ? 'Entrar com PIN' : 'Ativar (criar PIN)'}</button>`}
-    </div>
+    </div>`}
 
     ${planejador() ? telaAssessor() : ''}
 
@@ -917,7 +994,8 @@ async function confirmarCodigo() {
   await salvar();
   fecharModal();
   avisar(`Licença ativada: ${lic.nome}, ${fmtValidade(lic)}.`);
-  if (!planejador()) pedirPin(); else render();
+  render();
+  if (!planejador()) pedirPin();
 }
 
 // Licença vencida ou removida: sai do Modo Planejador (os dados continuam guardados).
@@ -987,31 +1065,79 @@ async function importar(arquivo) {
   }
 }
 
+// Liberado só depois de confirmar o código em "Esqueci o PIN"; o PIN antigo vale até o novo ser criado.
+let pinNovoLiberado = false;
+
 function pedirPin() {
-  const criando = !estado.config.pinHash;
+  const criando = !estado.config.pinHash || pinNovoLiberado;
+  const nomePin = SO_ASSESSOR ? 'PIN do assessor' : 'PIN do Modo Planejador';
   abrirModal(`
-    <h3>${criando ? 'Criar PIN do Modo Planejador' : 'PIN do Modo Planejador'}</h3>
+    <h3>${criando ? `Criar ${pinNovoLiberado ? 'novo ' : ''}${nomePin}` : nomePin}</h3>
     <form class="campos" onsubmit="return false">
       <label>PIN (4 a 8 números)<input type="password" inputmode="numeric" id="pin" maxlength="8" autocomplete="off"></label>
       ${criando ? '<label>Repita o PIN<input type="password" inputmode="numeric" id="pin2" maxlength="8" autocomplete="off"></label>' : ''}
     </form>
-    <div class="botoes"><button class="btn secundario" data-acao="fechar">Cancelar</button><button class="btn ouro" data-acao="confirmar-pin">Entrar</button></div>`);
+    <div class="botoes"><button class="btn secundario" data-acao="fechar">Cancelar</button><button class="btn ouro" data-acao="confirmar-pin">Entrar</button></div>
+    ${criando ? '' : '<p class="legal" style="margin-top:10px"><a href="#" data-acao="esqueci-pin">Esqueci o PIN</a></p>'}`);
+}
+
+// Esqueci o PIN: o assessor prova que é o dono colando de novo o código de licença dele.
+// Os clientes continuam no celular; só o PIN é trocado.
+function pedirCodigoParaPin() {
+  const lic = estado.config.licenca;
+  abrirModal(`
+    <h3>Esqueci o PIN</h3>
+    <p class="sub">Para criar um PIN novo, cole o seu código de ativação${lic ? ` (licença de <b>${esc(lic.nome)}</b>)` : ''}. Os clientes deste celular continuam guardados.</p>
+    <form class="campos" onsubmit="return false">
+      <textarea id="codigo-pin" placeholder="PF1...." style="min-height:110px;font-family:monospace;font-size:0.8rem"></textarea>
+    </form>
+    <div class="botoes"><button class="btn secundario" data-acao="fechar">Cancelar</button><button class="btn ouro" data-acao="confirmar-codigo-pin">Criar PIN novo</button></div>
+    <p class="legal" style="margin-top:10px">Não encontra o código? Peça de novo a ${esc(P.planejador.nome)}: <a href="https://wa.me/${P.planejador.whatsapp}" target="_blank" rel="noopener">WhatsApp</a>.</p>`);
+}
+
+async function confirmarCodigoParaPin() {
+  const atual = estado.config.licenca;
+  const lic = await verificarCodigo(document.getElementById('codigo-pin').value);
+  if (!lic) return avisar('Código inválido. Confira se copiou o código inteiro.');
+  if (!atual || lic.nome !== atual.nome) return avisar(`Este código não é da licença deste celular${atual ? ` (${atual.nome})` : ''}.`);
+  if (hoje() > lic.validade) return avisar(`Este código venceu em ${fmtData(lic.validade)}.`);
+  // Um código de renovação mais novo do mesmo assessor também vale e atualiza a licença.
+  if (lic.validade >= atual.validade) estado.config.licenca = lic;
+  pinNovoLiberado = true;
+  await salvar();
+  render();
+  pedirPin();
+  avisar('Código confirmado. Crie o seu PIN novo.');
 }
 
 async function confirmarPin() {
   const pin = document.getElementById('pin').value.trim();
   if (!/^\d{4,8}$/.test(pin)) return avisar('O PIN deve ter de 4 a 8 números.');
   const h = await hashPin(pin);
-  if (!estado.config.pinHash) {
+  if (!estado.config.pinHash || pinNovoLiberado) {
     if (pin !== document.getElementById('pin2').value.trim()) return avisar('Os PINs não conferem.');
     estado.config.pinHash = h;
+    pinNovoLiberado = false;
   } else if (h !== estado.config.pinHash) {
     return avisar('PIN incorreto.');
   }
   estado.config.modoPlanejador = true;
+  if (SO_ASSESSOR) estado.config.consentiu = true; // a tela de boas-vindas é do modo cliente
   await salvar();
   fecharModal();
   aba = 'inicio';
+  etapaAberta = null;
+  render();
+}
+
+// Bloqueia o app (pede o PIN de novo). Os dados continuam guardados.
+function bloquear() {
+  pinNovoLiberado = false;
+  estado.config.modoPlanejador = false;
+  salvar();
+  sim = {};
+  aba = 'inicio';
+  etapaAberta = null;
   render();
 }
 
@@ -1039,6 +1165,8 @@ async function apagar() {
 document.addEventListener('click', async (ev) => {
   const abaBtn = ev.target.closest('.abas button');
   if (abaBtn) return irPara(abaBtn.dataset.aba);
+  // Nome do cliente no topo: volta para a lista (trocar ou criar cliente).
+  if (ev.target.closest('#cliente-ativo') && planejador()) return irPara('inicio');
   const el = ev.target.closest('[data-acao]');
   if (!el) return;
   const pf = perfil();
@@ -1080,10 +1208,11 @@ document.addEventListener('click', async (ev) => {
       window.open(`https://wa.me/${whatsAtendimento()}?text=${encodeURIComponent(msg)}`, '_blank');
       return fecharModal();
     }
+    case 'pedir-pdf': return pedirPdfPlano();
     case 'pdf': return imprimirPlano();
     case 'relatorio': return pedirRelatorio();
     case 'gerar-relatorio': return gerarRelatorio();
-    case 'fechar': return fecharModal();
+    case 'fechar': pinNovoLiberado = false; return fecharModal();
     case 'limpar-sim': sim = {}; return render();
     case 'exportar': return exportar();
     case 'importar': return document.getElementById('arq-importar').click();
@@ -1093,14 +1222,19 @@ document.addEventListener('click', async (ev) => {
       return pedirCodigo(lic ? `A licença de ${lic.nome} venceu em ${fmtData(lic.validade)}. Insira o código de renovação.` : '');
     }
     case 'confirmar-pin': return confirmarPin();
+    case 'esqueci-pin': if (ev.preventDefault) ev.preventDefault(); return pedirCodigoParaPin();
+    case 'confirmar-codigo-pin': return confirmarCodigoParaPin();
     case 'sair-planejador':
+      if (SO_ASSESSOR) return bloquear();
       estado.config.modoPlanejador = false;
       await salvar();
       return irPara('inicio');
     case 'novo-cliente': {
-      const p = novoPerfil();
-      estado.perfis.push(p);
+      // Reaproveita uma ficha ainda em branco, para não acumular "Cliente sem nome".
+      let p = estado.perfis.find((x) => !x.pessoal.nome && !Object.keys(x.etapasFeitas).length);
+      if (!p) { p = novoPerfil(); estado.perfis.push(p); }
       estado.ativoId = p.id;
+      sim = {};
       await salvar();
       etapaAberta = 'sobre';
       aba = 'dados';
@@ -1145,6 +1279,19 @@ window.addEventListener('beforeinstallprompt', (e) => {
   pedidoInstalar = e;
   if (estado && aba === 'inicio') render();
 });
+// Bloqueio automático: depois de alguns minutos em segundo plano, pede o PIN de novo.
+let escondidoEm = null;
+document.addEventListener('visibilitychange', () => {
+  if (!SO_ASSESSOR || !estado) return;
+  if (document.hidden) { escondidoEm = Date.now(); return; }
+  const longe = escondidoEm && Date.now() - escondidoEm >= P.bloqueioMinutos * 60000;
+  escondidoEm = null;
+  if (longe && planejador()) {
+    if (modal().open) fecharModal();
+    bloquear();
+    pedirPin();
+  }
+});
 window.addEventListener('appinstalled', () => { pedidoInstalar = null; avisar('App instalado! Procure o ícone na tela inicial.'); });
 
 // ===================== Início =====================
@@ -1163,9 +1310,12 @@ async function iniciar() {
     estado = estadoInicial();
     avisar('Armazenamento indisponível: os dados não serão salvos.');
   }
-  conferirLicenca();
+  // Só assessores: toda abertura do app começa bloqueada e pede o PIN.
+  if (SO_ASSESSOR) estado.config.modoPlanejador = false;
+  else conferirLicenca();
   pedirArmazenamentoPersistente();
   render();
+  if (SO_ASSESSOR && licencaValida()) pedirPin();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 

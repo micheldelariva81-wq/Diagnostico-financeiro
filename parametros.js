@@ -13,6 +13,12 @@ const PARAMETROS = {
     whatsapp: '5549999158181', // 55 + DDD + número, só dígitos
   },
 
+  // true: app só para assessores (exige licença e PIN; abre na lista de clientes).
+  // false: volta o modo cliente livre (pessoa física), guardado para uma versão futura.
+  soAssessor: true,
+  // Minutos com o app em segundo plano antes de pedir o PIN de novo.
+  bloqueioMinutos: 5,
+
   direitos: '© 2026 Michel Ebertz. Todos os direitos reservados. A metodologia, os textos e o software deste app são protegidos pelas Leis 9.610/1998 (direitos autorais) e 9.609/1998 (programas de computador). É proibido copiar, reproduzir, modificar ou distribuir, no todo ou em parte, sem autorização por escrito do autor.',
 
   // Licença do Modo Planejador: códigos assinados por Michel (licencas/gerar-licenca.js).

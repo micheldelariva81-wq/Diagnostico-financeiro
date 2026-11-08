@@ -1,13 +1,15 @@
 # Planejador Financeiro: seu plano em 6 etapas
 
-**Planejamento financeiro pessoal completo, no celular, em cerca de 15 minutos.**
+**Planejamento financeiro pessoal completo, no celular, para assessores de investimentos usarem com os seus clientes.**
+
+> O acesso é **exclusivo para assessores licenciados**. A versão para o público (pessoa física) virá depois.
 
 👉 **Acesse o app:** https://micheldelariva81-wq.github.io/Planejador-financeiro/
 
 ---
 
 ## O que o app faz
-Você responde perguntas sobre a sua vida financeira e recebe na hora um plano completo, no método usado por planejadores financeiros profissionais.
+O assessor preenche com o cliente as informações da vida financeira dele e gera na hora um plano completo, no método usado por planejadores financeiros profissionais.
 
 | Área analisada | O que você descobre |
 |---|---|
@@ -23,7 +25,7 @@ Você responde perguntas sobre a sua vida financeira e recebe na hora um plano c
 **Resultado:** o **Índice de Saúde Financeira** (0 a 100), a nota de cada área e um **plano de ação** para os próximos 30 dias, 6 meses e 12 meses, que pode ser salvo em PDF.
 
 ## Privacidade
-🔒 **Seus dados ficam só no seu celular.** Não há cadastro, login nem servidor. Nada é enviado sem que você peça.
+🔒 **Os dados dos clientes ficam só no celular do assessor**, protegidos por PIN. Não há servidor. Nada é enviado sem que o assessor peça.
 
 ## Como instalar
 - **Android:** abra o link no **Chrome** e toque em **📲 Instalar** (ou menu **⋮** > **Instalar app**).
@@ -32,7 +34,7 @@ Você responde perguntas sobre a sua vida financeira e recebe na hora um plano c
 Depois de instalado, o app funciona até sem internet.
 
 ## Para assessores
-O **Modo Planejador** permite atender vários clientes no mesmo aparelho, com simulações, relatório completo em PDF para o cliente e contato direto pelo WhatsApp. O uso é **licenciado individualmente** pelo autor, mediante código de ativação com prazo de validade.
+O app permite atender vários clientes no mesmo aparelho, com simulações e relatório completo em PDF para o cliente. O uso é **licenciado individualmente** pelo autor, mediante código de ativação com prazo de validade.
 
 ## Aviso
 O plano é educativo e usa estimativas a partir das informações fornecidas pelo usuário. Não constitui recomendação individual de investimento nem consultoria jurídica ou contábil. Rentabilidades passadas e estimativas não garantem resultados futuros.
@@ -41,7 +43,7 @@ O plano é educativo e usa estimativas a partir das informações fornecidas pel
 
 ## Autor
 **Michel Ebertz**, Assessor de Investimentos e Planejador Financeiro (Chapecó/SC).
-Autorizações e licenças do Modo Planejador: WhatsApp **(49) 99915-8181**.
+Autorizações e licenças: WhatsApp **(49) 99915-8181**.
 
 ## Direitos autorais
 **© 2026 Michel Ebertz. Todos os direitos reservados.**
