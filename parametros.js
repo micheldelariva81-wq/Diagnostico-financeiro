@@ -15,7 +15,7 @@ const PARAMETROS = {
 
   // true: app só para assessores (exige licença e PIN; abre na lista de clientes).
   // false: volta o modo cliente livre (pessoa física), guardado para uma versão futura.
-  soAssessor: true,
+  soAssessor: false,
   // Minutos com o app em segundo plano antes de pedir o PIN de novo.
   bloqueioMinutos: 5,
 

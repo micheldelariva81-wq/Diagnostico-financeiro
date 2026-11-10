@@ -1,15 +1,13 @@
 # Planejador Financeiro: seu plano em 6 etapas
 
-**Planejamento financeiro pessoal completo, no celular, para assessores de investimentos usarem com os seus clientes.**
-
-> O acesso é **exclusivo para assessores licenciados**. A versão para o público (pessoa física) virá depois.
+**Faça o seu diagnóstico financeiro completo, de graça, no celular.** Sem cadastro, sem login e sem senha.
 
 👉 **Acesse o app:** https://micheldelariva81-wq.github.io/Planejador-financeiro/
 
 ---
 
 ## O que o app faz
-O assessor preenche com o cliente as informações da vida financeira dele e gera na hora um plano completo, no método usado por planejadores financeiros profissionais.
+Você responde perguntas sobre a sua vida financeira e recebe na hora um plano completo, no método usado por planejadores financeiros profissionais.
 
 | Área analisada | O que você descobre |
 |---|---|
@@ -25,7 +23,7 @@ O assessor preenche com o cliente as informações da vida financeira dele e ger
 **Resultado:** o **Índice de Saúde Financeira** (0 a 100), a nota de cada área e um **plano de ação** para os próximos 30 dias, 6 meses e 12 meses, que pode ser salvo em PDF.
 
 ## Privacidade
-🔒 **Os dados dos clientes ficam só no celular do assessor**, protegidos por PIN. Não há servidor. Nada é enviado sem que o assessor peça.
+🔒 **Os seus dados ficam só no seu celular.** Não há servidor. Nada é enviado sem que você peça.
 
 ## Como instalar
 - **Android:** abra o link no **Chrome** e toque em **📲 Instalar** (ou menu **⋮** > **Instalar app**).
@@ -34,7 +32,7 @@ O assessor preenche com o cliente as informações da vida financeira dele e ger
 Depois de instalado, o app funciona até sem internet.
 
 ## Para assessores
-O app permite atender vários clientes no mesmo aparelho, com simulações e relatório completo em PDF para o cliente. O uso é **licenciado individualmente** pelo autor, mediante código de ativação com prazo de validade.
+Em **Ajustes > Modo Planejador**, assessores licenciados atendem vários clientes no mesmo aparelho, protegidos por PIN, com relatório completo em PDF. Esse modo é **licenciado individualmente** pelo autor, mediante código de ativação com prazo de validade.
 
 ## Aviso
 O plano é educativo e usa estimativas a partir das informações fornecidas pelo usuário. Não constitui recomendação individual de investimento nem consultoria jurídica ou contábil. Rentabilidades passadas e estimativas não garantem resultados futuros.

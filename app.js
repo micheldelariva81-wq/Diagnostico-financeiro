@@ -3,7 +3,7 @@
 
 // ===================== Utilidades =====================
 
-const VERSAO_APP = 'v6';
+const VERSAO_APP = 'v7';
 const P = PARAMETROS;
 
 const fmtMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
