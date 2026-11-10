@@ -103,7 +103,7 @@ const planejador = () => !!estado.config.modoPlanejador;
 const SO_ASSESSOR = !!P.soAssessor;
 const bloqueado = () => SO_ASSESSOR && !planejador();
 
-// ---------- Licença do Modo Planejador ----------
+// ---------- Licença do Modo Assessor ----------
 // O código é assinado por Michel (licencas/gerar-licenca.js). O app só confere a assinatura
 // com a chave pública: sem a chave privada, ninguém cria nem altera um código.
 
@@ -328,7 +328,7 @@ function render() {
   if (bloqueado()) {
     chip.hidden = true;
     nav.style.display = 'none';
-    document.getElementById('titulo').textContent = 'Planejador Financeiro';
+    document.getElementById('titulo').textContent = 'Diagnóstico Financeiro';
     document.getElementById('conteudo').innerHTML = telaAcesso();
     window.scrollTo(0, 0);
     return;
@@ -340,7 +340,7 @@ function render() {
   const telas = { inicio: telaInicio, dados: telaDados, plano: telaPlano, simular: telaSimular, ajustes: telaAjustes };
   const titulos = planejador()
     ? { inicio: 'Clientes', dados: 'Dados do cliente', plano: 'Plano do cliente', simular: 'Simular', ajustes: 'Ajustes' }
-    : { inicio: 'Planejador Financeiro', dados: 'Seus dados', plano: 'Seu plano', simular: 'Simular', ajustes: 'Ajustes' };
+    : { inicio: 'Diagnóstico Financeiro', dados: 'Seus dados', plano: 'Seu plano', simular: 'Simular', ajustes: 'Ajustes' };
   document.getElementById('titulo').textContent = titulos[aba];
   document.getElementById('conteudo').innerHTML = telas[aba]();
   window.scrollTo(0, 0);
@@ -377,7 +377,7 @@ function avisosTopo() {
   if (planejador() && lic) {
     const dias = diasParaVencer(lic);
     if (!vitalicia(lic) && dias <= P.licenca.avisoDias) {
-      html += `<div class="faixa-aviso">🔑 Sua licença do Modo Planejador vence ${dias === 0 ? 'hoje' : `em ${dias} ${dias === 1 ? 'dia' : 'dias'}`} (${fmtData(lic.validade)}). Fale com ${esc(P.planejador.nome)} para renovar.</div>`;
+      html += `<div class="faixa-aviso">🔑 Sua licença do Modo Assessor vence ${dias === 0 ? 'hoje' : `em ${dias} ${dias === 1 ? 'dia' : 'dias'}`} (${fmtData(lic.validade)}). Fale com ${esc(P.planejador.nome)} para renovar.</div>`;
     }
     if (!assessor().whatsapp) {
       html += `<div class="faixa-aviso">📱 Cadastre o seu WhatsApp em <b>Ajustes</b>. Enquanto isso, os contatos dos clientes vão para ${esc(P.planejador.nome)}.</div>`;
@@ -398,7 +398,7 @@ function telaInicio() {
     ${avisosTopo()}
     ${rev && rev.vencida ? `<div class="faixa-aviso">⏰ Já passaram ${P.premissas.revisaoMeses} meses desde o seu último plano. Atualize os dados e veja sua evolução.</div>` : ''}
     <div class="cartao destaque">
-      <h3>${nome ? `Olá, ${esc(nome)}!` : 'Seu planejamento financeiro'}</h3>
+      <h3>${nome ? `Olá, ${esc(nome)}!` : 'Seu diagnóstico financeiro'}</h3>
       <p class="sub">Etapas preenchidas: ${feitas} de ${total}</p>
       <div class="progresso"><div style="width:${(feitas / total) * 100}%"></div></div>
       ${ult ? `<p>Último Índice de Saúde Financeira: <b>${ult.indice}/100</b> (${fmtData(ult.data)})</p>` : ''}
@@ -414,7 +414,7 @@ function telaInicio() {
         <li><b>Você conta a sua situação</b>: renda, gastos, patrimônio, dívidas, objetivos.</li>
         <li><b>O app analisa</b> oito áreas: orçamento, reserva, dívidas, investimentos, aposentadoria, proteção, impostos e sucessão.</li>
         <li><b>Você recebe um plano</b> com o Índice de Saúde Financeira e o que fazer em 30 dias, 6 e 12 meses.</li>
-        <li><b>Um planejador ajuda a pôr em prática</b>, se você quiser.</li>
+        <li><b>Um assessor ajuda a pôr em prática</b>, se você quiser.</li>
         <li><b>Revisão a cada ${P.premissas.revisaoMeses} meses</b> para acompanhar a evolução.</li>
       </ol>
     </div>
@@ -431,7 +431,7 @@ function telaAcesso() {
     return `
       <div class="cartao destaque">
         <h3>🔑 Acesso do assessor</h3>
-        <p>Ferramenta de planejamento financeiro para <b>assessores de investimentos</b> usarem nas reuniões com os seus clientes.</p>
+        <p>Ferramenta de diagnóstico financeiro para <b>assessores de investimentos</b> usarem nas reuniões com os seus clientes.</p>
         ${anterior ? `<p class="faixa-aviso">A licença de ${esc(anterior.nome)} venceu em ${fmtData(anterior.validade)}. Os clientes continuam guardados neste celular: insira o código de renovação para voltar a acessá-los.</p>` : ''}
         <p class="sub">O uso é licenciado por ${esc(P.planejador.nome)}. Cole o código de ativação que você recebeu.</p>
         <div class="botoes"><button class="btn ouro cheio" data-acao="trocar-licenca">Inserir código de ativação</button></div>
@@ -448,15 +448,15 @@ function telaAcesso() {
       ${estado.config.pinHash ? '<div class="botoes"><button class="btn secundario cheio" data-acao="esqueci-pin">Esqueci o PIN</button></div>' : ''}
     </div>
     ${instalar}
-    <p class="legal">Licença ${fmtValidade(lic)} · Planejador Financeiro ${VERSAO_APP}</p>
+    <p class="legal">Licença ${fmtValidade(lic)} · Diagnóstico Financeiro ${VERSAO_APP}</p>
     <p class="legal">${esc(P.direitos)}</p>`;
 }
 
 function telaBoasVindas() {
   return `
     <div class="cartao destaque">
-      <h3>Bem-vindo ao seu planejamento financeiro</h3>
-      <p>Em cerca de 15 minutos, você responde perguntas sobre a sua vida financeira e recebe um <b>plano completo</b>, no mesmo método usado por planejadores financeiros profissionais.</p>
+      <h3>Bem-vindo ao seu diagnóstico financeiro</h3>
+      <p>Em cerca de 15 minutos, você responde perguntas sobre a sua vida financeira e recebe um <b>plano completo</b>.</p>
       <p>🔒 <b>Privacidade:</b> as suas respostas ficam guardadas <b>neste celular</b>. Não há cadastro, login nem senha.${URL_CAPTACAO ? ` No fim, para ver o plano, você informa o seu contato e autoriza o envio de um resumo a ${esc(P.planejador.nome)}, que pode te ajudar a colocar o plano em prática.` : ''}</p>
       <p class="legal">O plano é educativo e usa estimativas. Não é recomendação individual de investimento. Para aplicar o plano com segurança, converse com um profissional.</p>
       <p class="legal">${esc(P.direitos)}</p>
@@ -642,7 +642,7 @@ function telaPlano() {
     <div class="cartao"><h3>Notas por área</h3><div class="barras">${barras}</div></div>
     <div class="cartao destaque"><h3>${planejador() ? 'Plano de ação' : 'Seu plano de ação'}</h3>${planoAcao || '<p>Parabéns! Nenhuma ação urgente. Mantenha o plano e revise a cada 6 meses.</p>'}</div>
     ${SO_ASSESSOR ? '' : `<div class="botoes nao-imprimir">
-      <button class="btn whats" data-acao="whats">💬 Quero implementar com um planejador</button>
+      <button class="btn whats" data-acao="whats">💬 Quero implementar com um assessor</button>
       <button class="btn" data-acao="pdf">📄 PDF do plano</button>
     </div>`}
     <h2>Análise por área</h2>
@@ -668,8 +668,8 @@ function capaRelatorio(pf, r) {
   const a = assessor();
   const whats = whatsAtendimento();
   return `<div class="capa">
-    <div class="capa-marca">Planejador Financeiro</div>
-    <h1>Relatório de Planejamento Financeiro</h1>
+    <div class="capa-marca">Diagnóstico Financeiro</div>
+    <h1>Relatório de Diagnóstico Financeiro</h1>
     <p class="capa-cliente">${esc(pf.pessoal.nome || 'Cliente')}</p>
     <p class="sub">Elaborado em ${fmtData(hoje())}</p>
     <div class="capa-indice">${svgIndice(r.indice)}<div><div class="rotulo">Índice de Saúde Financeira</div><div class="faixa" style="color:${corNota(r.indice)}">${esc(r.faixa)}</div></div></div>
@@ -771,12 +771,12 @@ function gerarRelatorio() {
 
 function limparRelatorio() {
   document.body.classList.remove('relatorio');
-  document.title = 'Planejador Financeiro';
+  document.title = 'Diagnóstico Financeiro';
 }
 
 function mensagemWhats(pf, r) {
   const prior = r.acoes.slice(0, 3).map((a, i) => `${i + 1}. ${a.titulo}`).join('\n');
-  return `Olá, ${primeiroNome(nomeAtendimento())}! Fiz meu planejamento no app Planejador Financeiro e quero ajuda para colocar em prática.\n\n` +
+  return `Olá, ${primeiroNome(nomeAtendimento())}! Fiz meu diagnóstico no app Diagnóstico Financeiro e quero ajuda para colocar em prática.\n\n` +
     `Nome: ${pf.pessoal.nome || ''}\nIdade: ${pf.pessoal.idade || ''}\nEstado: ${pf.pessoal.uf || ''}\n` +
     `Índice de Saúde Financeira: ${r.indice}/100 (${r.faixa})\n` +
     (prior ? `\nMinhas prioridades:\n${prior}` : '');
@@ -852,7 +852,7 @@ function enviarPendentes() {
   estado.perfis.forEach((pf) => { if (pf.lead && pf.lead.consentiuEm && !pf.lead.enviadoEm) enviarLead(pf); });
 }
 
-// O Modo Planejador só aparece para assessores: quem já tem licença neste celular ou abriu o link com #assessor.
+// O Modo Assessor só aparece para assessores: quem já tem licença neste celular ou abriu o link com #assessor.
 const mostraModoPlanejador = () => planejador() || !!estado.config.licenca || !!estado.config.acessoAssessor;
 
 function abrirWhats() {
@@ -860,7 +860,7 @@ function abrirWhats() {
   const r = Calc.calcular(pf);
   if (r.incompleto) return;
   abrirModal(`
-    <h3>Falar com o planejador</h3>
+    <h3>Falar com o assessor</h3>
     <p class="sub">O WhatsApp vai abrir com a mensagem abaixo. Você pode editar o texto. Nada é enviado até você tocar em enviar no WhatsApp.</p>
     <form class="campos" onsubmit="return false">
       <textarea id="msg-whats">${esc(mensagemWhats(pf, r))}</textarea>
@@ -972,7 +972,7 @@ function telaAjustes() {
     <div class="cartao">
       <p class="sub">${planejador()
         ? 'Os dados ficam só neste celular. Exporte uma cópia de todos os clientes toda semana e guarde no seu Google Drive. Para levar a outro celular, use Importar.'
-        : `Suas respostas ficam neste celular${URL_CAPTACAO ? ` (só o resumo autorizado foi enviado a ${esc(P.planejador.nome)}; para excluí-lo, peça pelo WhatsApp)` : ''}. Faça uma cópia de segurança de vez em quando, ou para levar ao planejador.`}</p>
+        : `Suas respostas ficam neste celular${URL_CAPTACAO ? ` (só o resumo autorizado foi enviado a ${esc(P.planejador.nome)}; para excluí-lo, peça pelo WhatsApp)` : ''}. Faça uma cópia de segurança de vez em quando, ou para levar ao seu assessor.`}</p>
       <div class="botoes">
         <button class="btn" data-acao="exportar">⬇️ Exportar (.json)</button>
         <button class="btn secundario" data-acao="importar">⬆️ Importar</button>
@@ -987,11 +987,11 @@ function telaAjustes() {
       <p class="sub">O app pede o PIN sempre que é aberto e depois de ${P.bloqueioMinutos} minutos em segundo plano.</p>
       <button class="btn secundario cheio" data-acao="sair-planejador">🔒 Bloquear agora</button>
     </div>` : !mostraModoPlanejador() ? '' : `
-    <h2>Modo Planejador</h2>
+    <h2>Modo Assessor</h2>
     <div class="cartao">
-      <p class="sub">Para uso do planejador em reunião: vários clientes no mesmo aparelho, protegidos por PIN.</p>
+      <p class="sub">Para uso do assessor em reunião: vários clientes no mesmo aparelho, protegidos por PIN.</p>
       ${planejador()
-        ? '<button class="btn secundario cheio" data-acao="sair-planejador">Sair do Modo Planejador</button>'
+        ? '<button class="btn secundario cheio" data-acao="sair-planejador">Sair do Modo Assessor</button>'
         : `<button class="btn cheio" data-acao="entrar-planejador">${estado.config.pinHash ? 'Entrar com PIN' : 'Ativar (criar PIN)'}</button>`}
     </div>`}
 
@@ -1004,14 +1004,14 @@ function telaAjustes() {
 
     <h2>Sobre</h2>
     <div class="cartao legal">
-      <p>Planejador Financeiro ${VERSAO_APP} · tabelas conferidas em ${esc(P.verificadoEm)}.</p>
+      <p>Diagnóstico Financeiro ${VERSAO_APP} · tabelas conferidas em ${esc(P.verificadoEm)}.</p>
       <p>${esc(creditos())}.</p>
       <p>O plano é educativo e não substitui a recomendação individual de um profissional.</p>
       <p>${esc(P.direitos)}</p>
     </div>`;
 }
 
-// Só aparece no Modo Planejador (com PIN), para o cliente não trocar o contato.
+// Só aparece no Modo Assessor (com PIN), para o cliente não trocar o contato.
 function telaAssessor() {
   const c = dadosAssessor(licencaValida());
   const lic = licencaValida();
@@ -1048,7 +1048,7 @@ function pedirCodigo(motivo = '') {
   abrirModal(`
     <h3>Código de ativação</h3>
     ${motivo ? `<p class="faixa-aviso">${esc(motivo)}</p>` : ''}
-    <p class="sub">O Modo Planejador é licenciado por ${esc(P.planejador.nome)}. Cole o código que você recebeu.</p>
+    <p class="sub">O Modo Assessor é licenciado por ${esc(P.planejador.nome)}. Cole o código que você recebeu.</p>
     <form class="campos" onsubmit="return false">
       <textarea id="codigo-licenca" placeholder="PF1...." style="min-height:110px;font-family:monospace;font-size:0.8rem"></textarea>
     </form>
@@ -1072,13 +1072,13 @@ async function confirmarCodigo() {
   if (!planejador()) pedirPin();
 }
 
-// Licença vencida ou removida: sai do Modo Planejador (os dados continuam guardados).
+// Licença vencida ou removida: sai do Modo Assessor (os dados continuam guardados).
 function conferirLicenca() {
   if (planejador() && !licencaValida()) {
     estado.config.modoPlanejador = false;
     salvar();
     const lic = estado.config.licenca;
-    avisar(lic ? `Licença vencida em ${fmtData(lic.validade)}. Fale com ${P.planejador.nome} para renovar.` : 'Modo Planejador exige licença.');
+    avisar(lic ? `Licença vencida em ${fmtData(lic.validade)}. Fale com ${P.planejador.nome} para renovar.` : 'Modo Assessor exige licença.');
     return false;
   }
   return true;
@@ -1144,7 +1144,7 @@ let pinNovoLiberado = false;
 
 function pedirPin() {
   const criando = !estado.config.pinHash || pinNovoLiberado;
-  const nomePin = SO_ASSESSOR ? 'PIN do assessor' : 'PIN do Modo Planejador';
+  const nomePin = SO_ASSESSOR ? 'PIN do assessor' : 'PIN do Modo Assessor';
   abrirModal(`
     <h3>${criando ? `Criar ${pinNovoLiberado ? 'novo ' : ''}${nomePin}` : nomePin}</h3>
     <form class="campos" onsubmit="return false">

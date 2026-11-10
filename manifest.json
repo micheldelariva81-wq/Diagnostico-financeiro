@@ -1,7 +1,7 @@
 {
-  "name": "Planejador Financeiro: seu plano em 6 etapas",
+  "name": "Diagnóstico Financeiro: seu plano em 6 etapas",
   "short_name": "Meu Plano",
-  "description": "Planejamento financeiro completo: orçamento, reserva, dívidas, investimentos, aposentadoria, proteção, impostos e sucessão",
+  "description": "Diagnóstico financeiro completo: orçamento, reserva, dívidas, investimentos, aposentadoria, proteção, impostos e sucessão",
   "lang": "pt-BR",
   "start_url": "./index.html",
   "scope": "./",

@@ -361,7 +361,7 @@
       }
       if (suc.empresaFamiliar) achados.push({ tipo: 'atencao', texto: 'Empresa familiar: defina acordo de sócios e regras de sucessão na gestão, além da sucessão das cotas.' });
     }
-    if (previdencia > 0) achados.push({ tipo: 'info', texto: 'Previdência privada costuma ficar fora do inventário. A reforma tributária (LC 227/2026) mudou regras do ITCMD: confirme a situação do seu plano com o planejador.' });
+    if (previdencia > 0) achados.push({ tipo: 'info', texto: 'Previdência privada costuma ficar fora do inventário. A reforma tributária (LC 227/2026) mudou regras do ITCMD: confirme a situação do seu plano com o seu assessor.' });
     return { id: 'sucessao', nome: 'Sucessão', nota: lim(nota), achados, acoes, dados: { heranca, imposto, custo, liquidezFora, meacao } };
   }
 

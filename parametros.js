@@ -9,7 +9,7 @@ const PARAMETROS = {
   // Autor da metodologia (crédito fixo) e atendimento padrão (quando o assessor não configura o dele).
   planejador: {
     nome: 'Michel Ebertz',
-    titulo: 'Assessor de Investimentos e Planejador Financeiro',
+    titulo: 'Assessor de Investimentos',
     whatsapp: '5549999158181', // 55 + DDD + número, só dígitos
   },
 
