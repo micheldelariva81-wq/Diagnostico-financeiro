@@ -3,7 +3,7 @@
 
 // ===================== Utilidades =====================
 
-const VERSAO_APP = 'v7';
+const VERSAO_APP = 'v8';
 const P = PARAMETROS;
 
 const fmtMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -418,7 +418,7 @@ function telaInicio() {
         <li><b>Revisão a cada ${P.premissas.revisaoMeses} meses</b> para acompanhar a evolução.</li>
       </ol>
     </div>
-    <p class="legal">🔒 Seus dados ficam só neste celular. Nada é enviado sem você pedir.</p>`;
+    <p class="legal">🔒 ${URL_CAPTACAO ? `Suas respostas ficam neste celular. Para ver o plano, você autoriza o envio de um resumo a ${esc(P.planejador.nome)}.` : 'Seus dados ficam só neste celular. Nada é enviado sem você pedir.'}</p>`;
 }
 
 // Tela de entrada do app só para assessores: licença (1ª vez) e PIN (a cada abertura).
@@ -457,7 +457,7 @@ function telaBoasVindas() {
     <div class="cartao destaque">
       <h3>Bem-vindo ao seu planejamento financeiro</h3>
       <p>Em cerca de 15 minutos, você responde perguntas sobre a sua vida financeira e recebe um <b>plano completo</b>, no mesmo método usado por planejadores financeiros profissionais.</p>
-      <p>🔒 <b>Privacidade:</b> tudo o que você digitar fica guardado <b>só neste celular</b>. Não há cadastro, login nem servidor.</p>
+      <p>🔒 <b>Privacidade:</b> as suas respostas ficam guardadas <b>neste celular</b>. Não há cadastro, login nem senha.${URL_CAPTACAO ? ` No fim, para ver o plano, você informa o seu contato e autoriza o envio de um resumo a ${esc(P.planejador.nome)}, que pode te ajudar a colocar o plano em prática.` : ''}</p>
       <p class="legal">O plano é educativo e usa estimativas. Não é recomendação individual de investimento. Para aplicar o plano com segurança, converse com um profissional.</p>
       <p class="legal">${esc(P.direitos)}</p>
       <form class="campos" onsubmit="return false">
@@ -583,6 +583,7 @@ function telaPlano() {
     return `<div class="vazio">Para gerar o plano, falta preencher: <b>${r.faltando.map(esc).join(', ')}</b>.</div>
       <div class="botoes"><button class="btn ouro" data-acao="ir" data-aba="dados">Preencher dados</button></div>`;
   }
+  if (precisaContato(pf)) return telaContato(pf);
   registrarHistorico(pf, r.indice);
   const nome = pf.pessoal.nome || 'você';
   const prazos = ['30 dias', '6 meses', '12 meses'];
@@ -781,6 +782,79 @@ function mensagemWhats(pf, r) {
     (prior ? `\nMinhas prioridades:\n${prior}` : '');
 }
 
+// ---------- Captação (uso livre) ----------
+// Antes do plano, a pessoa informa o contato e autoriza (LGPD) o envio de um resumo para a
+// planilha do Michel. As respostas completas continuam só no celular.
+const URL_CAPTACAO = (P.captacao && P.captacao.urlEnvio) || '';
+const precisaContato = (pf) => !planejador() && !!URL_CAPTACAO && !(pf.lead && pf.lead.consentiuEm);
+
+function telaContato(pf) {
+  return `
+    <div class="cartao destaque">
+      <h3>🎉 Seu diagnóstico está pronto!</h3>
+      <p class="sub">Para ver o seu plano, informe o seu contato. ${esc(P.planejador.nome)} vai receber um resumo do diagnóstico para te ajudar a colocar o plano em prática, se você quiser.</p>
+      <form class="campos" onsubmit="return false">
+        <label>Seu nome<input type="text" id="lead-nome" value="${esc(pf.pessoal.nome || '')}" autocomplete="name"></label>
+        <label>WhatsApp com DDD<input type="text" inputmode="tel" id="lead-whats" placeholder="(49) 99999-9999" autocomplete="tel"></label>
+        <label>E-mail (opcional)<input type="email" id="lead-email" autocomplete="email"></label>
+        <label class="check"><input type="checkbox" id="ck-lead"> Autorizo ${esc(P.planejador.nome)} a receber o resumo deste diagnóstico (contato, idade, estado, renda, gastos, patrimônio, dívidas, perfil de investidor, notas e prioridades) e a falar comigo por WhatsApp ou e-mail.</label>
+      </form>
+      <div class="botoes"><button class="btn ouro cheio" data-acao="enviar-contato">Ver meu plano</button></div>
+      <p class="legal" style="margin-top:10px">As suas respostas completas continuam só neste celular. O resumo não é vendido nem repassado a ninguém, e você pode pedir a exclusão quando quiser pelo WhatsApp (LGPD, Lei 13.709/2018).</p>
+    </div>`;
+}
+
+function resumoLead(pf) {
+  const r = Calc.calcular(pf);
+  const A = r.agregados;
+  const notas = r.dominios.filter((d) => d.aplicavel !== false && d.nota !== null).map((d) => `${d.nome}: ${d.nota}`).join(' | ');
+  return {
+    app: 'planejador-financeiro', versao: VERSAO_APP, data: new Date().toISOString(), origem: estado.config.origem || '',
+    nome: pf.pessoal.nome || '', whatsapp: pf.lead.whatsapp, email: pf.lead.email || '',
+    idade: pf.pessoal.idade || '', uf: pf.pessoal.uf || '', estadoCivil: pf.pessoal.estadoCivil || '',
+    profissao: pf.pessoal.profissao || '', dependentes: (pf.pessoal.dependentes || []).length,
+    rendaMensal: A.rendaMensal, gastos: A.gastos, parcelas: A.parcelas, sobra: A.rendaMensal - A.gastos - A.parcelas,
+    investeMensal: A.investe, patrimonioFinanceiro: A.financeiro, patrimonioTotal: A.total, dividas: A.totalDividas, patrimonioLiquido: A.liquido,
+    perfil: Calc.perfilInvestidor(pf.suitability.respostas || []).perfil || '',
+    indice: r.indice, faixa: r.faixa, notas,
+    prioridades: r.acoes.slice(0, 5).map((a, i) => `${i + 1}. ${a.titulo}`).join(' | '),
+  };
+}
+
+// Envia o resumo. Sem internet, fica pendente e é reenviado na próxima abertura.
+async function enviarLead(pf) {
+  if (!URL_CAPTACAO || !pf.lead || pf.lead.enviadoEm) return;
+  try {
+    await fetch(URL_CAPTACAO, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(resumoLead(pf)) });
+    pf.lead.enviadoEm = new Date().toISOString();
+    await salvar();
+  } catch (e) { /* tenta de novo depois */ }
+}
+
+async function enviarContato() {
+  const pf = perfil();
+  const nome = document.getElementById('lead-nome').value.trim();
+  const whats = normalizarWhats(document.getElementById('lead-whats').value);
+  const email = document.getElementById('lead-email').value.trim();
+  if (!nome) return avisar('Informe o seu nome.');
+  if (!whats) return avisar('Informe um WhatsApp válido, com DDD. Ex.: (49) 99999-9999.');
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return avisar('E-mail inválido. Corrija ou deixe em branco.');
+  if (!document.getElementById('ck-lead').checked) return avisar('Marque a autorização para ver o seu plano.');
+  pf.pessoal.nome = nome;
+  pf.lead = { whatsapp: whats, email, consentiuEm: new Date().toISOString(), enviadoEm: '' };
+  await salvar();
+  render();
+  enviarLead(pf);
+}
+
+function enviarPendentes() {
+  if (!estado || planejador()) return;
+  estado.perfis.forEach((pf) => { if (pf.lead && pf.lead.consentiuEm && !pf.lead.enviadoEm) enviarLead(pf); });
+}
+
+// O Modo Planejador só aparece para assessores: quem já tem licença neste celular ou abriu o link com #assessor.
+const mostraModoPlanejador = () => planejador() || !!estado.config.licenca || !!estado.config.acessoAssessor;
+
 function abrirWhats() {
   const pf = perfil();
   const r = Calc.calcular(pf);
@@ -898,7 +972,7 @@ function telaAjustes() {
     <div class="cartao">
       <p class="sub">${planejador()
         ? 'Os dados ficam só neste celular. Exporte uma cópia de todos os clientes toda semana e guarde no seu Google Drive. Para levar a outro celular, use Importar.'
-        : 'Os dados ficam só neste celular. Faça uma cópia de segurança de vez em quando, ou para levar ao planejador.'}</p>
+        : `Suas respostas ficam neste celular${URL_CAPTACAO ? ` (só o resumo autorizado foi enviado a ${esc(P.planejador.nome)}; para excluí-lo, peça pelo WhatsApp)` : ''}. Faça uma cópia de segurança de vez em quando, ou para levar ao planejador.`}</p>
       <div class="botoes">
         <button class="btn" data-acao="exportar">⬇️ Exportar (.json)</button>
         <button class="btn secundario" data-acao="importar">⬆️ Importar</button>
@@ -912,7 +986,7 @@ function telaAjustes() {
     <div class="cartao">
       <p class="sub">O app pede o PIN sempre que é aberto e depois de ${P.bloqueioMinutos} minutos em segundo plano.</p>
       <button class="btn secundario cheio" data-acao="sair-planejador">🔒 Bloquear agora</button>
-    </div>` : `
+    </div>` : !mostraModoPlanejador() ? '' : `
     <h2>Modo Planejador</h2>
     <div class="cartao">
       <p class="sub">Para uso do planejador em reunião: vários clientes no mesmo aparelho, protegidos por PIN.</p>
@@ -1202,6 +1276,7 @@ document.addEventListener('click', async (ev) => {
       return render();
     }
     case 'whats': return abrirWhats();
+    case 'enviar-contato': return enviarContato();
     case 'enviar-whats': {
       if (!document.getElementById('ck-lgpd').checked) return avisar('Marque a autorização para continuar.');
       const msg = document.getElementById('msg-whats').value;
@@ -1292,6 +1367,7 @@ document.addEventListener('visibilitychange', () => {
     pedirPin();
   }
 });
+window.addEventListener('online', () => enviarPendentes());
 window.addEventListener('appinstalled', () => { pedidoInstalar = null; avisar('App instalado! Procure o ícone na tela inicial.'); });
 
 // ===================== Início =====================
@@ -1313,9 +1389,17 @@ async function iniciar() {
   // Só assessores: toda abertura do app começa bloqueada e pede o PIN.
   if (SO_ASSESSOR) estado.config.modoPlanejador = false;
   else conferirLicenca();
+  // Origem do acesso (ex.: ?utm_source=instagram) e link de assessor (#assessor).
+  if (typeof location !== 'undefined') {
+    const origem = new URLSearchParams(location.search).get('utm_source');
+    if (origem && !estado.config.origem) estado.config.origem = origem.slice(0, 40);
+    if (/assessor/i.test(location.hash)) estado.config.acessoAssessor = true;
+    if (origem || estado.config.acessoAssessor) salvar();
+  }
   pedirArmazenamentoPersistente();
   render();
   if (SO_ASSESSOR && licencaValida()) pedirPin();
+  enviarPendentes();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 

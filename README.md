@@ -23,7 +23,7 @@ Você responde perguntas sobre a sua vida financeira e recebe na hora um plano c
 **Resultado:** o **Índice de Saúde Financeira** (0 a 100), a nota de cada área e um **plano de ação** para os próximos 30 dias, 6 meses e 12 meses, que pode ser salvo em PDF.
 
 ## Privacidade
-🔒 **Os seus dados ficam só no seu celular.** Não há servidor. Nada é enviado sem que você peça.
+🔒 **As suas respostas ficam no seu celular.** Para ver o plano, você informa o seu contato e autoriza o envio de um resumo do diagnóstico ao autor, que pode te ajudar a colocar o plano em prática. O resumo não é vendido nem repassado, e você pode pedir a exclusão a qualquer momento (LGPD).
 
 ## Como instalar
 - **Android:** abra o link no **Chrome** e toque em **📲 Instalar** (ou menu **⋮** > **Instalar app**).
@@ -32,7 +32,7 @@ Você responde perguntas sobre a sua vida financeira e recebe na hora um plano c
 Depois de instalado, o app funciona até sem internet.
 
 ## Para assessores
-Em **Ajustes > Modo Planejador**, assessores licenciados atendem vários clientes no mesmo aparelho, protegidos por PIN, com relatório completo em PDF. Esse modo é **licenciado individualmente** pelo autor, mediante código de ativação com prazo de validade.
+Assessores licenciados, pelo link de acesso que recebem do autor, atendem vários clientes no mesmo aparelho, protegidos por PIN, com relatório completo em PDF. Esse modo é **licenciado individualmente** pelo autor, mediante código de ativação com prazo de validade.
 
 ## Aviso
 O plano é educativo e usa estimativas a partir das informações fornecidas pelo usuário. Não constitui recomendação individual de investimento nem consultoria jurídica ou contábil. Rentabilidades passadas e estimativas não garantem resultados futuros.

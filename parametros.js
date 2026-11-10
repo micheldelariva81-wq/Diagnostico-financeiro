@@ -16,6 +16,10 @@ const PARAMETROS = {
   // true: app só para assessores (exige licença e PIN; abre na lista de clientes).
   // false: volta o modo cliente livre (pessoa física), guardado para uma versão futura.
   soAssessor: false,
+  // Captação no uso livre: antes de ver o plano, a pessoa informa o contato e autoriza o envio
+  // de um resumo para a planilha Google do Michel (veja captacao\COMO-CONFIGURAR.txt).
+  // Vazio: o plano aparece direto e nada é enviado.
+  captacao: { urlEnvio: 'https://script.google.com/macros/s/AKfycbz4IMsRYvYFZHcK7490sUlIZJGob6pD404tvTAOZhgyRbpfW_dI3i1DeZqUCiQfkJwIUw/exec' },
   // Minutos com o app em segundo plano antes de pedir o PIN de novo.
   bloqueioMinutos: 5,
 
